@@ -86,7 +86,7 @@ def prepare_results_dict(input_file):
     # prepare_results_dict()：从 JSONL 中读取 RAG 结果并构建 retriever 输出字典
     results = {}
     collection_results = {}
-    with open(input_file, 'r') as f:
+    with open(input_file, 'r', encoding="utf-8") as f:
         for line in f:
             item = json.loads(line)
             query_id = item["task_id"]
