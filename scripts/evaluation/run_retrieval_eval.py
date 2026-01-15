@@ -9,7 +9,8 @@ def evaluate(qrels: Dict[str, Dict[str, int]],
                  results: Dict[str, Dict[str, float]], 
                  k_values: List[int],
                  ignore_identical_ids: bool=True) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]:
-        
+        # 如果 retriever 把 query_id 和 doc_id 相同的条目拿出来（某些数据集会这样），删掉。
+        # 删除 query_id == doc_id 的结果
         if ignore_identical_ids:
             popped = []
             for qid, rels in results.items():
@@ -22,21 +23,22 @@ def evaluate(qrels: Dict[str, Dict[str, int]],
         _map = {}
         recall = {}
         precision = {}
-        
+        # 初始化 metric 字典
         for k in k_values:
             ndcg[f"NDCG@{k}"] = 0.0
             _map[f"MAP@{k}"] = 0.0
             recall[f"Recall@{k}"] = 0.0
             precision[f"P@{k}"] = 0.0
-        
+        # 构造 pytrec_eval 的 metric 名字
         map_string = "map_cut." + ",".join([str(k) for k in k_values])
         ndcg_string = "ndcg_cut." + ",".join([str(k) for k in k_values])
         recall_string = "recall." + ",".join([str(k) for k in k_values])
         precision_string = "P." + ",".join([str(k) for k in k_values])
+        # 调用 pytrec_eval 来计算所有 query 的指标
         # evaluator = pytrec_eval.RelevanceEvaluator(qrels, {map_string, ndcg_string, recall_string, precision_string})
         evaluator = pytrec_eval.RelevanceEvaluator(qrels, {ndcg_string, recall_string})
         scores = evaluator.evaluate(results)
-        
+        # 累加所有 query 的指标用于计算平均值
         for query_id in scores.keys():
             for k in k_values:
                 ndcg[f"NDCG@{k}"] += scores[query_id]["ndcg_cut_" + str(k)]
@@ -50,8 +52,8 @@ def evaluate(qrels: Dict[str, Dict[str, int]],
     
 
 def compute_results(results, qrels):
-
-    k_values = [1, 3, 5]
+    # 调用 evaluate 并返回结果
+    k_values = [1, 3, 5, 10]
     if len(results) == 0:
         ndcg = _map = recall = precision = mrr = {i: '-' for i in k_values}
     else:
@@ -81,6 +83,7 @@ def load_qrels(qrels_file):
     return qrels
  
 def prepare_results_dict(input_file):
+    # prepare_results_dict()：从 JSONL 中读取 RAG 结果并构建 retriever 输出字典
     results = {}
     collection_results = {}
     with open(input_file, 'r') as f:
@@ -95,12 +98,13 @@ def prepare_results_dict(input_file):
                 doc_scores[doc_id] = score
             
             results[query_id] = doc_scores
+            # 同时保存每个 query 的 collection：
             collection_results[query_id] = item["Collection"]
             
     return results, collection_results
 
 
-def enrich_json_retrieval(input_file, scores_per_instance, output_file):
+def enrich_json_retrieval(input_file, scores_per_instance, output_file, model_name):
  
     retrieval_predictions_pd = read_json_with_pandas(filepath=f"{input_file}")
     
@@ -114,10 +118,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_file", type=str, required=True, help="Path to input JSON file")
     parser.add_argument("--output_file", type=str, required=True, help="Path to output JSON file")
+    parser.add_argument("--model_name", type=str, required=True, help="Path to output JSON file")
+    parser.add_argument("--task_name", type=str, required=True, help="Path to output JSON file")
     
     args = parser.parse_args()
     input_file = args.input_file
     output_file = args.output_file
+    model_name = args.model_name
+    task_name = args.task_name
     
     retrieval_predictions, collection_results = prepare_results_dict(input_file)
     
@@ -131,13 +139,13 @@ def main():
         print("\ncollection_name:", collection_name)
 
         if collection_name == "mt-rag-clapnq-elser-512-100-20240503":
-            qrels_file = os.path.join(script_dir, "../../human/retrieval_tasks_convid/clapnq/qrels/dev.tsv")
+            qrels_file = os.path.join(script_dir, "../../human/retrieval_tasks/clapnq/qrels/dev.tsv")
         if collection_name == "mt-rag-govt-elser-512-100-20240611":
-            qrels_file = os.path.join(script_dir, "../../human/retrieval_tasks_convid/govt/qrels/dev.tsv")
+            qrels_file = os.path.join(script_dir, "../../human/retrieval_tasks/govt/qrels/dev.tsv")
         if collection_name == "mt-rag-fiqa-beir-elser-512-100-20240501":
-            qrels_file = os.path.join(script_dir, "../../human/retrieval_tasks_convid/fiqa/qrels/dev.tsv")
+            qrels_file = os.path.join(script_dir, "../../human/retrieval_tasks/fiqa/qrels/dev.tsv")
         if collection_name == "mt-rag-ibmcloud-elser-512-100-20240502":
-            qrels_file = os.path.join(script_dir, "../../human/retrieval_tasks_convid/cloud/qrels/dev.tsv")
+            qrels_file = os.path.join(script_dir, "../../human/retrieval_tasks/cloud/qrels/dev.tsv")
             
         qrels = load_qrels(qrels_file)
         
@@ -181,9 +189,9 @@ def main():
     })
 
     df = pd.DataFrame(rows)
-    df.to_csv(f"{os.path.splitext(output_file)[0]}_aggregate.csv", index=False)
+    df.to_csv(f"{model_name}_{task_name}_aggregate.csv", index=False)
     
-    enrich_json_retrieval(input_file, global_scores_per_query_id, output_file)
+    enrich_json_retrieval(input_file, global_scores_per_query_id, output_file, model_name)
 
 if __name__ == "__main__":
     

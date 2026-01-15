@@ -1,0 +1,19 @@
+name: mtrag
+channels:
+  - defaults
+dependencies:
+  - python=3.10
+  - pytorch
+  - pytorch-cuda
+  - ipykernel
+  - requests
+  - tqdm
+  - regex
+  - tiktoken
+  - protobuf
+  - sentencepiece
+  - sentence-transformers
+  - numpy=1.26.4
+  - scikit-learn=1.4
+  - scipy=1.11
+prefix: /home/smen/.conda/envs/mtrag
