@@ -1,0 +1,45 @@
+
+# --- local / hpc ---
+cache/
+logs/
+outputs/
+reports/
+scores/
+splits/
+tmp*.*
+*.csv
+*.tsv
+*.tar.gz
+*.sha512
+
+# notebooks
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# model checkpoints / large dirs
+Jasper-Token-Compression-600M/
+Qwen3-0.6B/
+Qwen3-4B-Instruct-2507/
+Qwen3-Embedding-0.6B/
+Qwen3-reranker-0.6b/
+gemma-2b/
+jasper-ft-human-lastturn*/
+jasper-ft-human-lastturn-s42-r01/
+
+# corpora / datasets
+cleaned_dataset/
+corpora/
+human/retrieval_tasks_derived/
+human/retrieval_tasks/*/*.jsonl
+human/retrieval_tasks/*/*_rewrite*.jsonl
+
+# elasticsearch artifacts
+elasticsearch-*/
+esdata_*/
+eslogs_*/
+
+# python cache
+__pycache__/
+**/__pycache__/
+*.pyc
+
