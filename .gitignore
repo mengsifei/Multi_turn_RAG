@@ -45,3 +45,8 @@ __pycache__/
 **/__pycache__/
 *.pyc
 
+#res
+Sifei*
+# local outputs
+Sifei_taskA.jsonl
+Sifei_taskC_pred.jsonl
