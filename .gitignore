@@ -6,6 +6,7 @@ outputs/
 reports/
 scores/
 splits/
+eval_data
 tmp*.*
 *.csv
 *.tsv
@@ -25,6 +26,7 @@ Qwen3-reranker-0.6b/
 gemma-2b/
 jasper-ft-human-lastturn*/
 jasper-ft-human-lastturn-s42-r01/
+BGE-reranker-v2-m3
 
 # corpora / datasets
 cleaned_dataset/

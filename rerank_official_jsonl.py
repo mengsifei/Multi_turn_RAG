@@ -1,13 +1,32 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+rerank_official_jsonl.py
+
+- Supports two reranker modes:
+  1) yesno_llm: Qwen-style yes/no via CausalLM last-token probability
+  2) cross_encoder:
+      - If reranker name contains "zerank": uses sentence_transformers.CrossEncoder (trust_remote_code=True)
+      - Otherwise: uses transformers AutoModelForSequenceClassification
+
+- Adds:
+  * --fallback_to_human : if doc missing in cleaned corpus, try human/retrieval_tasks corpus
+  * --human_tasks_root  : where to load the fallback corpus from (default human/retrieval_tasks)
+  * robust handling when a doc is missing even after fallback:
+      - keep it with a very low score so output still has keep_topk items
+"""
+
 import argparse
 import json
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, List, Optional, Tuple
+import sys, shlex, datetime
 
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import sys, shlex, datetime
+import torch.nn.functional as F
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
+from sentence_transformers import CrossEncoder
+
 
 # ---------------------------
 # Qwen yes/no reranker template
@@ -22,6 +41,9 @@ SUFFIX = '<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n'
 DEFAULT_INSTRUCTION = "Given a web search query, retrieve relevant passages that answer the query"
 
 
+# -----------------------------
+# Helpers
+# -----------------------------
 def guess_domain(collection_name: str) -> str:
     s = (collection_name or "").lower()
     for d in ["clapnq", "fiqa", "govt", "cloud"]:
@@ -34,9 +56,7 @@ def load_jsonl_text_map(
     path: Path,
     *,
     id_keys=("id", "_id", "query_id", "task_id", "doc_id", "corpus_id", "document_id"),
-    # text_keys=("text", "query", "contents", "content", "document", "passage", "body"),
     text_keys=("ctx_text", "text", "query", "contents", "content", "document", "passage", "body"),
-
 ) -> Dict[str, str]:
     out: Dict[str, str] = {}
     with path.open("r", encoding="utf-8") as f:
@@ -79,31 +99,10 @@ def _norm_qid(qid: str) -> str:
 
 
 def get_query_text(qmap: Dict[str, str], task_id: str) -> Optional[str]:
-    # exact first
     if task_id in qmap:
         return qmap[task_id]
-    # fallback base id (strip <::>turn)
     base = _norm_qid(task_id)
     return qmap.get(base)
-
-
-# def format_pair(instruction: str, query: str, doc: str) -> str:
-#     return f"<Instruct>: {instruction}\n<Query>: {query}\n<Document>: {doc}"
-
-
-# def build_inputs(tokenizer, pairs: List[str], max_length: int,
-#                  prefix_tokens: List[int], suffix_tokens: List[int]):
-#     inputs = tokenizer(
-#         pairs,
-#         padding=False,
-#         truncation="longest_first",
-#         return_attention_mask=False,
-#         max_length=max_length - len(prefix_tokens) - len(suffix_tokens),
-#     )
-#     for i, ele in enumerate(inputs["input_ids"]):
-#         inputs["input_ids"][i] = prefix_tokens + ele + suffix_tokens
-#     inputs = tokenizer.pad(inputs, padding=True, return_tensors="pt", max_length=max_length)
-#     return inputs
 
 
 def format_header(instruction: str, query: str) -> str:
@@ -120,86 +119,113 @@ def build_inputs_doc_trunc(
 ):
     avail = max_length - len(prefix_tokens) - len(suffix_tokens)
     if avail <= 0:
-        raise ValueError(f"max_length={max_length} too small for prefix+suffix "
-                         f"({len(prefix_tokens)}+{len(suffix_tokens)})")
+        raise ValueError(
+            f"max_length={max_length} too small for prefix+suffix "
+            f"({len(prefix_tokens)}+{len(suffix_tokens)})"
+        )
 
     input_ids = []
     for h, d in zip(headers, docs):
-        # 1) header：不使用自动截断，避免把 "<Document>:" 截掉
         h_ids = tokenizer.encode(h, add_special_tokens=False, truncation=False)
 
-        # 如果 header 超了 avail：保留 header 尾部（更可能保住 Query + <Document>:）
         if len(h_ids) > avail:
             h_ids = h_ids[-avail:]
             remain = 0
         else:
             remain = avail - len(h_ids)
 
-        # 2) doc：只在剩余预算里截断
         if remain > 0:
             d_ids = tokenizer.encode(d, add_special_tokens=False, truncation=True, max_length=remain)
         else:
             d_ids = []
 
         ids = prefix_tokens + h_ids + d_ids + suffix_tokens
-        # debug sanity：确保不超过 max_length
         if len(ids) > max_length:
-            ids = ids[-max_length:]  # 理论上不会触发，保险兜底（保尾部）
+            ids = ids[-max_length:]
         input_ids.append(ids)
 
     batch = tokenizer.pad(
         {"input_ids": input_ids},
         padding=True,
         return_tensors="pt",
-        # return_attention_mask=True,  # 默认就是 True；想显式也可打开
     )
     return batch
 
 
+# -----------------------------
+# Cross-encoder scoring (transformers)
+# -----------------------------
+@torch.no_grad()
+def rerank_scores_ce_tf(
+    model,
+    tokenizer,
+    query: str,
+    docs: List[str],
+    *,
+    max_length=1024,
+    batch_size=32,
+    sigmoid=False,
+) -> List[float]:
+    device = next(model.parameters()).device
+    out: List[float] = []
+
+    for s in range(0, len(docs), batch_size):
+        d_b = docs[s : s + batch_size]
+        features = tokenizer(
+            [query] * len(d_b),
+            d_b,
+            padding=True,
+            truncation=True,
+            max_length=max_length,
+            return_tensors="pt",
+        )
+        features = {k: v.to(device) for k, v in features.items()}
+
+        logits = model(**features).logits  # [B], [B,1], or [B,2]
+
+        if logits.ndim == 1:
+            scores = logits
+            if sigmoid:
+                scores = torch.sigmoid(scores)
+
+        elif logits.ndim == 2 and logits.size(-1) == 1:
+            scores = logits.squeeze(-1)
+            if sigmoid:
+                scores = torch.sigmoid(scores)
+
+        elif logits.ndim == 2 and logits.size(-1) == 2:
+            if sigmoid:
+                scores = torch.softmax(logits, dim=-1)[:, 1]
+            else:
+                scores = logits[:, 1]
+        else:
+            scores = logits.squeeze()
+            if scores.ndim != 1:
+                raise ValueError(f"Unexpected logits shape: {tuple(logits.shape)}")
+            if sigmoid:
+                scores = torch.sigmoid(scores)
+
+        out.extend(scores.detach().float().cpu().tolist())
+
+    return out
 
 
-# @torch.no_grad()
-# def rerank_scores(model, tokenizer, headers, docs, *, max_length=2048, batch_size=8):
-#     token_no = tokenizer.convert_tokens_to_ids("no")
-#     token_yes = tokenizer.convert_tokens_to_ids("yes")
-#     prefix_tokens = tokenizer.encode(PREFIX, add_special_tokens=False)
-#     suffix_tokens = tokenizer.encode(SUFFIX, add_special_tokens=False)
-
-#     out = []
-#     for s in range(0, len(docs), batch_size):
-#         h_b = headers[s:s+batch_size]
-#         d_b = docs[s:s+batch_size]
-#         inputs = build_inputs_doc_trunc(tokenizer, h_b, d_b, max_length, prefix_tokens, suffix_tokens)
-#         inputs = {k: v.to(model.device) for k, v in inputs.items()}
-
-#         # 关键：禁用 cache，显著降显存风险
-#         logits_last = model(**inputs, use_cache=False).logits[:, -1, :]
-
-#         yes_v = logits_last[:, token_yes]
-#         no_v  = logits_last[:, token_no]
-#         two = torch.stack([no_v, yes_v], dim=1)
-#         p_yes = torch.nn.functional.log_softmax(two, dim=1).exp()[:, 1]
-#         out.extend(p_yes.detach().cpu().tolist())
-#     return out
-
-import torch
-import torch.nn.functional as F
-
-def _token_id_safe(tokenizer, s: str) -> int | None:
+# -----------------------------
+# Qwen yes/no scoring (CausalLM)
+# -----------------------------
+def _token_id_safe(tokenizer, s: str) -> Optional[int]:
     tid = tokenizer.convert_tokens_to_ids(s)
-    # 有些 tokenizer 遇到不存在 token 会返回 unk 或 None；这里简单过滤掉无效 id
     if tid is None:
         return None
-    # 经验：有的实现会返回 0/unk_id，你也可以按 tokenizer.unk_token_id 过滤
     return int(tid)
 
-def _collect_variant_ids(tokenizer, variants):
+
+def _collect_variant_ids(tokenizer, variants) -> List[int]:
     ids = []
     for v in variants:
         tid = _token_id_safe(tokenizer, v)
         if tid is not None:
             ids.append(tid)
-    # 去重，保持顺序
     seen = set()
     out = []
     for x in ids:
@@ -210,71 +236,72 @@ def _collect_variant_ids(tokenizer, variants):
         raise ValueError(f"None of these tokens exist in vocab: {variants}")
     return out
 
+
 @torch.no_grad()
-def rerank_scores(model, tokenizer, headers, docs, *, max_length=2048, batch_size=8):
-    # 关键：Qwen 常用的是 " yes"/" no"（带空格），但也保留不带空格的备选
+def rerank_scores_yesno_llm(model, tokenizer, headers, docs, *, max_length=2048, batch_size=8) -> List[float]:
     yes_ids = _collect_variant_ids(tokenizer, [" yes", "yes"])
-    no_ids  = _collect_variant_ids(tokenizer, [" no",  "no"])
+    no_ids = _collect_variant_ids(tokenizer, [" no", "no"])
 
     prefix_tokens = tokenizer.encode(PREFIX, add_special_tokens=False)
     suffix_tokens = tokenizer.encode(SUFFIX, add_special_tokens=False)
 
-    out = []
+    out: List[float] = []
     for s in range(0, len(docs), batch_size):
-        h_b = headers[s:s+batch_size]
-        d_b = docs[s:s+batch_size]
+        h_b = headers[s : s + batch_size]
+        d_b = docs[s : s + batch_size]
 
         inputs = build_inputs_doc_trunc(
-            tokenizer, h_b, d_b,
-            max_length, prefix_tokens, suffix_tokens
+            tokenizer, h_b, d_b, max_length, prefix_tokens, suffix_tokens
         )
         inputs = {k: v.to(model.device) for k, v in inputs.items()}
 
-        # 禁用 KV cache 降显存风险
         logits_last = model(**inputs, use_cache=False).logits[:, -1, :]  # [B, V]
 
-        # 把 " yes"/"yes" 合成一个“yes logit”，" no"/"no" 合成一个“no logit”
         yes_logits = logits_last.index_select(1, torch.tensor(yes_ids, device=logits_last.device))
-        no_logits  = logits_last.index_select(1, torch.tensor(no_ids,  device=logits_last.device))
+        no_logits = logits_last.index_select(1, torch.tensor(no_ids, device=logits_last.device))
 
-        # 多个 token 变体用 logsumexp 合并（比 max 更平滑）
-        yes_v = torch.logsumexp(yes_logits, dim=1)  # [B]
-        no_v  = torch.logsumexp(no_logits,  dim=1)  # [B]
+        yes_v = torch.logsumexp(yes_logits, dim=1)
+        no_v = torch.logsumexp(no_logits, dim=1)
 
-        two = torch.stack([no_v, yes_v], dim=1)     # [B, 2]
+        two = torch.stack([no_v, yes_v], dim=1)
         p_yes = F.softmax(two, dim=1)[:, 1]
         out.extend(p_yes.detach().cpu().tolist())
 
     return out
 
 
-
+# -----------------------------
+# Model resolver
+# -----------------------------
 def resolve_local_or_id(model_arg: str, *, local_only: bool) -> str:
     p = Path(model_arg)
     if p.exists():
         return str(p.resolve())
-    # if local-only requested, fail fast with a clear message
     if local_only and (model_arg.startswith("./") or model_arg.startswith("/") or model_arg.startswith("../")):
         raise FileNotFoundError(f"--reranker points to a local path but it does not exist: {model_arg}")
     return model_arg
 
 
+def count_lines(path: Path) -> int:
+    n = 0
+    with path.open("rb") as f:
+        for _ in f:
+            n += 1
+    return n
+
+
 def main():
     ap = argparse.ArgumentParser()
 
-    ap.add_argument("--task", required=True, choices=["lastturn", "questions", "rewrite", "rewrite_gpt"],
-                    help="Which query file to use: <dom>_<task>.jsonl")
-
+    ap.add_argument("--task", required=True, choices=["lastturn", "questions", "rewrite", "rewrite_gpt"])
     ap.add_argument("--in_jsonl", required=True)
     ap.add_argument("--out_jsonl", required=True)
 
     ap.add_argument("--reranker", required=True)
     ap.add_argument("--instruction", default=DEFAULT_INSTRUCTION)
 
-    ap.add_argument("--retrieval_tasks_root", default="human/retrieval_tasks",
-                    help="Root containing per-domain folders (fiqa/, clapnq/, ...).")
+    ap.add_argument("--retrieval_tasks_root", default="human/retrieval_tasks")
 
-    # Optional overrides for corpus paths (if you don't use <root>/<dom>/<dom>.jsonl)
     ap.add_argument("--corpus_clapnq", default=None)
     ap.add_argument("--corpus_fiqa", default=None)
     ap.add_argument("--corpus_govt", default=None)
@@ -287,7 +314,26 @@ def main():
     ap.add_argument("--batch_size", type=int, default=8)
     ap.add_argument("--max_length", type=int, default=8192)
 
-    ap.add_argument("--local_files_only", action="store_true", help="Force offline load for reranker model/tokenizer.")
+    ap.add_argument("--local_files_only", action="store_true")
+
+    ap.add_argument("--reranker_mode", choices=["yesno_llm", "cross_encoder"], default="yesno_llm")
+    ap.add_argument("--ce_max_length", type=int, default=1024)
+    ap.add_argument("--ce_sigmoid", action="store_true")
+
+    # Fallback to human corpus when doc missing in cleaned corpus
+    ap.add_argument(
+        "--fallback_to_human",
+        action="store_true",
+        help="If doc missing in retrieval_tasks_root corpus, fallback to human_tasks_root corpus.",
+    )
+    ap.add_argument(
+        "--human_tasks_root",
+        default="human/retrieval_tasks",
+        help="Root path for fallback human corpus (default: human/retrieval_tasks).",
+    )
+
+    # Progress logging
+    ap.add_argument("--progress_every", type=int, default=10, help="Print progress every N queries.")
 
     args = ap.parse_args()
 
@@ -296,27 +342,31 @@ def main():
     print(f"[TIME] {datetime.datetime.now().isoformat(timespec='seconds')}")
 
     root = Path(args.retrieval_tasks_root)
+    human_root = Path(args.human_tasks_root)
 
-    # Build per-domain query-text paths: <root>/<dom>/<dom>_<task>.jsonl
     def query_file(dom: str) -> Path:
         return root / dom / f"{dom}_{args.task}.jsonl"
 
-    # Build per-domain corpus paths: <root>/<dom>/<dom>.jsonl (or override)
     def corpus_file(dom: str) -> Path:
         override = getattr(args, f"corpus_{dom}", None)
         if override:
             return Path(override)
         return root / dom / f"{dom}.jsonl"
 
-    # Load queries + corpus maps
+    def human_corpus_file(dom: str) -> Path:
+        return human_root / dom / f"{dom}.jsonl"
+
     domains = ["clapnq", "fiqa", "govt", "cloud"]
 
+    # Load query/corpus maps once
     queries: Dict[str, Dict[str, str]] = {}
-    corpus: Dict[str, Dict[str, str]] = {}
+    corpus_clean: Dict[str, Dict[str, str]] = {}
+    corpus_human: Dict[str, Dict[str, str]] = {}
 
     for dom in domains:
         qf = query_file(dom)
         cf = corpus_file(dom)
+
         print(f"[QUERY] {dom}: {qf}")
         if not qf.exists():
             raise FileNotFoundError(f"Missing query file for {dom}: {qf}")
@@ -324,32 +374,98 @@ def main():
             raise FileNotFoundError(f"Missing corpus file for {dom}: {cf}")
 
         queries[dom] = load_jsonl_text_map(qf)
-        corpus[dom] = load_jsonl_text_map(cf)
+        corpus_clean[dom] = load_jsonl_text_map(cf)
+
+        if args.fallback_to_human:
+            hf = human_corpus_file(dom)
+            if not hf.exists():
+                raise FileNotFoundError(f"--fallback_to_human enabled but missing human corpus for {dom}: {hf}")
+            corpus_human[dom] = load_jsonl_text_map(hf)
+
+    reranker_id = resolve_local_or_id(args.reranker, local_only=bool(args.local_files_only))
+    reranker_name = str(reranker_id).lower()
+    is_zerank = ("zerank" in reranker_name)
 
     # Load reranker
-    reranker_id = resolve_local_or_id(args.reranker, local_only=bool(args.local_files_only))
-    tokenizer = AutoTokenizer.from_pretrained(
-        reranker_id,
-        padding_side="left",
-        local_files_only=bool(args.local_files_only),
-    )
-    if tokenizer.pad_token_id is None:
-        tokenizer.pad_token = tokenizer.eos_token
-    # Transformers warns torch_dtype deprecated in some versions; keep compatible:
-    model = AutoModelForCausalLM.from_pretrained(
-        reranker_id,
-        device_map="auto",
-        torch_dtype=torch.float16 if torch.cuda.is_available() else None,
-        local_files_only=bool(args.local_files_only),
-    ).eval()
-    tokenizer.pad_token = tokenizer.eos_token
+    model = None
+    tokenizer = None
+    ce = None  # sentence-transformers CrossEncoder (zerank)
+
+    if args.reranker_mode == "yesno_llm":
+        tokenizer = AutoTokenizer.from_pretrained(
+            reranker_id,
+            padding_side="left",
+            local_files_only=bool(args.local_files_only),
+            trust_remote_code=True,
+        )
+        if tokenizer.pad_token_id is None:
+            tokenizer.pad_token = tokenizer.eos_token
+
+        model = AutoModelForCausalLM.from_pretrained(
+            reranker_id,
+            device_map="auto",
+            torch_dtype=torch.float16 if torch.cuda.is_available() else None,
+            local_files_only=bool(args.local_files_only),
+            trust_remote_code=True,
+        ).eval()
+
+    else:
+        if is_zerank:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            ce = CrossEncoder(reranker_id, trust_remote_code=True, device=device)
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(
+                reranker_id,
+                padding_side="right",
+                local_files_only=bool(args.local_files_only),
+                trust_remote_code=True,
+            )
+
+            if tokenizer.pad_token_id is None:
+                if tokenizer.eos_token is not None:
+                    tokenizer.pad_token = tokenizer.eos_token
+                elif tokenizer.sep_token is not None:
+                    tokenizer.pad_token = tokenizer.sep_token
+                else:
+                    tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+
+            dtype_arg = torch.float16 if torch.cuda.is_available() else None
+
+            model = AutoModelForSequenceClassification.from_pretrained(
+                reranker_id,
+                device_map="auto",
+                torch_dtype=dtype_arg,
+                local_files_only=bool(args.local_files_only),
+                trust_remote_code=True,
+            ).eval()
+
+            if len(tokenizer) > model.get_input_embeddings().weight.shape[0]:
+                model.resize_token_embeddings(len(tokenizer))
+
+            if getattr(model.config, "pad_token_id", None) is None:
+                model.config.pad_token_id = tokenizer.pad_token_id
 
     in_path = Path(args.in_jsonl)
     out_path = Path(args.out_jsonl)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
+    total = count_lines(in_path)
+    print(f"[INFO] total_queries={total}", flush=True)
+
+    missing_total = 0
+    missing_after_fallback_total = 0
+
+    LOW_SCORE = -1e9  # for truly-missing docs, keep but push to the bottom
+
     with in_path.open("r", encoding="utf-8") as fin, out_path.open("w", encoding="utf-8") as fout:
-        for line in fin:
+        for i, line in enumerate(fin, 1):
+            if i == 1 or (args.progress_every > 0 and i % args.progress_every == 0):
+                pct = (i / total) if total > 0 else 0.0
+                print(
+                    f"[PROGRESS] {i}/{total} ({pct:.1%}) missing_total={missing_total} missing_after_fallback={missing_after_fallback_total}",
+                    flush=True,
+                )
+
             item = json.loads(line)
             dom = guess_domain(item.get("Collection", ""))
             task_id = item["task_id"]
@@ -366,39 +482,88 @@ def main():
                 fout.write(json.dumps(item, ensure_ascii=False) + "\n")
                 continue
 
-            # topN by original score
             ctxs_sorted = sorted(ctxs, key=lambda c: float(c.get("score", 0.0)), reverse=True)
-            cand = ctxs_sorted[: args.cand_topn]
+            cand_all = ctxs_sorted[: args.cand_topn]
 
-            docs: List[str] = []
-            for c in cand:
-                did = c["document_id"]
-                dtext = corpus[dom].get(did)
-                if not dtext:
-                    raise KeyError(
-                        f"Doc text not found for document_id={did} (domain={dom}). "
-                        f"Loaded corpus from: {corpus_file(dom)}"
+            # Build docs list for those we can actually fetch text for
+            docs_to_score: List[str] = []
+            cand_to_score: List[dict] = []
+            cand_missing: List[dict] = []
+
+            for c in cand_all:
+                did = c.get("document_id")
+                if not did:
+                    # weird candidate; keep but push down
+                    c["orig_score"] = float(c.get("score", 0.0))
+                    c["rerank_score"] = None
+                    c["score"] = LOW_SCORE
+                    cand_missing.append(c)
+                    missing_after_fallback_total += 1
+                    continue
+
+                dtext = corpus_clean[dom].get(did)
+                if dtext is None and args.fallback_to_human:
+                    missing_total += 1
+                    dtext = corpus_human.get(dom, {}).get(did)
+
+                if dtext is None:
+                    # still missing after fallback -> keep but make it last
+                    missing_after_fallback_total += 1
+                    c["orig_score"] = float(c.get("score", 0.0))
+                    c["rerank_score"] = None
+                    c["score"] = LOW_SCORE
+                    cand_missing.append(c)
+                    continue
+
+                docs_to_score.append(dtext)
+                cand_to_score.append(c)
+
+            # Score only those we can fetch text for
+            rr: List[float] = []
+            if docs_to_score:
+                if args.reranker_mode == "yesno_llm":
+                    headers = [format_header(args.instruction, qtext)] * len(docs_to_score)
+                    rr = rerank_scores_yesno_llm(
+                        model, tokenizer, headers, docs_to_score,
+                        max_length=args.max_length,
+                        batch_size=args.batch_size,
                     )
-                docs.append(dtext)
-            
-            
-            # pairs = [format_pair(args.instruction, qtext, d) for d in docs]
-            # rr = rerank_scores(model, tokenizer, pairs, max_length=args.max_length, batch_size=args.batch_size)
+                else:
+                    if ce is not None:
+                        rr = ce.predict(list(zip([qtext] * len(docs_to_score), docs_to_score)), batch_size=args.batch_size)
+                        rr = [float(x) for x in rr]
+                    else:
+                        rr = rerank_scores_ce_tf(
+                            model, tokenizer, qtext, docs_to_score,
+                            max_length=args.ce_max_length,
+                            batch_size=args.batch_size,
+                            sigmoid=bool(args.ce_sigmoid),
+                        )
 
-            headers = [format_header(args.instruction, qtext)] * len(docs)
-            rr = rerank_scores(model, tokenizer, headers, docs, max_length=args.max_length, batch_size=args.batch_size)
+                if len(rr) != len(cand_to_score):
+                    raise RuntimeError(f"Internal error: rr len {len(rr)} != cand_to_score len {len(cand_to_score)}")
 
+                alpha = float(args.alpha)
+                for c, s in zip(cand_to_score, rr):
+                    orig = float(c.get("score", 0.0))
+                    c["orig_score"] = orig
+                    c["rerank_score"] = float(s)
+                    c["score"] = alpha * float(s) + (1.0 - alpha) * orig
 
-            alpha = float(args.alpha)
-            for c, s in zip(cand, rr):
-                orig = float(c.get("score", 0.0))
-                c["orig_score"] = orig
-                c["rerank_score"] = float(s)
-                c["score"] = alpha * float(s) + (1.0 - alpha) * orig
+            # Merge back: scored + missing (missing already has LOW_SCORE)
+            merged = cand_to_score + cand_missing
+            merged = sorted(merged, key=lambda c: float(c.get("score", 0.0)), reverse=True)
 
-            cand = sorted(cand, key=lambda c: float(c["score"]), reverse=True)[: args.keep_topk]
-            item["contexts"] = cand
+            # Keep topk
+            item["contexts"] = merged[: args.keep_topk]
             fout.write(json.dumps(item, ensure_ascii=False) + "\n")
+
+    print("[DONE] wrote:", out_path, flush=True)
+    if missing_total or missing_after_fallback_total:
+        print(
+            f"[STATS] missing_in_clean={missing_total} still_missing_after_fallback={missing_after_fallback_total}",
+            flush=True,
+        )
 
 
 if __name__ == "__main__":

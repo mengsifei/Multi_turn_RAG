@@ -58,7 +58,7 @@ def strip_newline_words(text: str) -> str:
 # ================================================
 #                Third Party scorers
 # ================================================
-logging.getLogger("absl").setLevel(logging.ERROR)
+# logging.getLogger("absl").setLevel(logging.ERROR)
 
 timestamp = datetime.now()
 bertscore_metric = evaluate.load(

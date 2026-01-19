@@ -28,4 +28,4 @@ def download_repo(repo_id: str, out_dir: str, revision: str | None = None):
 
 if __name__ == "__main__":
     # 例：reranker / embedding / 你的 Jasper（按你实际用到的填）
-    download_repo("Qwen/Qwen3-4B-Instruct-2507", "./Qwen3-4B-Instruct-2507")
+    download_repo("mixedbread-ai/mxbai-rerank-base-v1", "./mxbai-rerank-base-v1")

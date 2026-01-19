@@ -173,7 +173,7 @@ def build_or_load_index(corpus_path: Path, cache_dir: Path, k1: float, b: float)
 # -----------------------------
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--task", required=True, choices=["lastturn", "questions", "rewrite"])
+    ap.add_argument("--task", required=True, choices=["lastturn", "questions", "rewrite", "rewrite_gpt"])
     ap.add_argument("--retrieval_tasks_root", default="human/retrieval_tasks")
     ap.add_argument("--out_jsonl", required=True)
     ap.add_argument("--top_k", type=int, default=100)

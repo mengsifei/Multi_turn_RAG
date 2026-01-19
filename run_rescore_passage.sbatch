@@ -1,29 +1,51 @@
 #!/bin/bash
-#SBATCH --job-name=Jasper_rescorePassage
-#SBATCH --account=proj_1782
-#SBATCH --gpus=1
-#SBATCH --cpus-per-gpu=4
-#SBATCH --output=logs/Jasper_original_cleaned_packed512_top2000_expand20k_KEEP20k_rescorePassage_top1000_%j.out
-#SBATCH --error=logs/Jasper_original_cleaned_packed512_top2000_expand20k_KEEP20k_rescorePassage_top1000_%j.err
-#SBATCH --time=08:00:00
+#SBATCH -J elser-4d
+#SBATCH -p normal
+#SBATCH -c 16
+#SBATCH -t 30-00:00:00
+#SBATCH -o logs/elser-4d.%j.out
+#SBATCH -e logs/elser-4d.%j.err
 
 set -euo pipefail
-cd "$SLURM_SUBMIT_DIR"
+cd $HOME/mt-rag/mt-rag-benchmark
+mkdir -p logs
 
-# 如果你需要激活环境，把下面两行取消注释并改成你的env名：
-# source ~/.bashrc
-# conda activate mtrag310
+PORT=$((9200 + (${SLURM_JOB_ID:-0} % 1000)))
+export ESDATA=${SCRATCH:-$PWD}/esdata_810_${SLURM_JOB_ID}
+export ESLOG=${SCRATCH:-$PWD}/eslogs_810_${SLURM_JOB_ID}
+mkdir -p "$ESDATA" "$ESLOG"
 
-srun python3 rescore_with_passage_emb.py \
+export ES_JAVA_OPTS="-Xms4g -Xmx4g"
+
+./elasticsearch-8.10.0/bin/elasticsearch -d -p es.pid \
+  -Ediscovery.type=single-node \
+  -Expack.security.enabled=false \
+  -Enetwork.host=127.0.0.1 \
+  -Ehttp.port=$PORT \
+  -Epath.data="$ESDATA" \
+  -Epath.logs="$ESLOG"
+
+trap 'test -f es.pid && kill "$(cat es.pid)" 2>/dev/null || true' EXIT
+
+for i in $(seq 1 120); do
+  curl -sS http://127.0.0.1:$PORT >/dev/null && break
+  sleep 5
+done
+if ! curl -sS http://127.0.0.1:$PORT >/dev/null; then
+  echo "[FATAL] ES did not start"
+  tail -n 200 "$ESLOG"/* 2>/dev/null || true
+  exit 1
+fi
+curl -sS http://127.0.0.1:$PORT | head
+
+python3 other_scripts/elser_mtrag_auto.py \
+  --es_url http://127.0.0.1:$PORT \
   --task lastturn \
-  --in_jsonl outputs/Jasper_original_cleaned_packed512_top2000_expand20k_KEEP20k_lastturn.jsonl \
-  --out_jsonl outputs/Jasper_original_cleaned_packed512_top2000_expand20k_KEEP20k_rescorePassage_top1000_lastturn.jsonl \
-  --model_dir Jasper-Token-Compression-600M \
-  --cache_dir cache/doc_emb_Jasper_original_cleaned_passageRescore_KEEP20k \
-  --retrieval_tasks_root cleaned_dataset \
+  --domains "clapnq,fiqa,cloud,govt" \
+  --index_tag cleaned \
   --corpus_override_dir human/retrieval_tasks_derived \
   --corpus_override_suffix .cleaned.jsonl \
-  --max_len 512 \
-  --compression_ratio 0.3333 \
-  --top_k_out 1000 \
-  --local_files_only
+  --blacklist_path reports/blacklist.valid.txt \
+  --fast_bulk \
+  --allocations 4 \
+  --do_eval

@@ -20,7 +20,79 @@ from sentence_transformers import SentenceTransformer
 import gzip
 
 
-# new
+def _norm_collection(x: str) -> str:
+    s = (x or "").strip().lower()
+    if s == "ibmcloud":
+        return "cloud"
+    return s
+
+
+
+def _linearize_dialog(msgs, mode="last_user", last_n=None):
+    """
+    mode:
+      - "last_user": 只用最后一个 user utterance（最接近你旧的 lastturn 格式）
+      - "full": 把整段对话串起来（多轮信息更全）
+    """
+    if mode == "last_user":
+        for m in reversed(msgs):
+            if m.get("speaker") == "user":
+                return "|user|: " + (m.get("text","") or "")
+        return ""
+
+    # full
+    lines = []
+    for m in msgs[-last_n:] if (last_n and last_n > 0) else msgs:
+        sp = m.get("speaker")
+        role = "user" if sp == "user" else "assistant"  # agent -> assistant
+        lines.append(f"|{role}|: {m.get('text','') or ''}")
+    return "\n".join(lines).strip()
+
+
+def load_test_taska_queries(test_input_jsonl: str, query_mode="last_user", last_n=None):
+    by_domain = defaultdict(dict)
+    with open(test_input_jsonl, "r", encoding="utf-8") as f:
+        for line_no, line in enumerate(f, start=1):
+            line = line.strip()
+            if not line:
+                continue
+            item = json.loads(line)
+
+            # 需要 domain（用于按 fiqa/govt/... 分流）
+            if "Collection" not in item:
+                raise ValueError(f"Line {line_no}: missing Collection in {test_input_jsonl}")
+            # domain = item["Collection"]
+            domain = _norm_collection(item["Collection"])
+
+
+            # 兼容 task_id / _id
+            task_id = item.get("task_id") or item.get("_id")
+            if not isinstance(task_id, str) or not task_id:
+                raise ValueError(f"Line {line_no}: missing task_id/_id in {test_input_jsonl}")
+
+            # Case1: 原始 test（有 input）
+            if "input" in item:
+                msgs = item.get("input", [])
+                q = _linearize_dialog(msgs, mode=query_mode, last_n=last_n)
+
+            # Case2: 你预处理后的 lastturn 文件（有 text）
+            elif "text" in item:
+                q = item.get("text", "") or ""
+                if query_mode == "last_user":
+                    # 如果 text 里有多行，只取最后一个 |user|:
+                    last = ""
+                    for ln in reversed([x for x in q.splitlines() if x.strip()]):
+                        if ln.startswith("|user|:"):
+                            last = ln
+                            break
+                    q = last or q.strip()
+
+            else:
+                q = ""
+
+            by_domain[domain][task_id] = q
+    return by_domain
+
 
 import re
 from collections import defaultdict
@@ -493,6 +565,8 @@ def run_retrieval_for_collection(
     expand_topm: int = 1200,
     pack_agg: str = "max",
     corpus_text_key: str = "text",
+    queries_override: Dict[str, str] | None = None,
+    collection_out: str | None = None,
 
 ):
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -514,7 +588,12 @@ def run_retrieval_for_collection(
     # corpus = load_corpus(corpus_path, blacklist=blacklist)
     corpus = load_corpus(corpus_path, blacklist=blacklist, text_key=corpus_text_key)
 
-    queries = load_queries(query_path)
+    # queries = load_queries(query_path)
+    if queries_override is not None:
+        queries = queries_override
+    else:
+        queries = load_queries(query_path)
+
 
     # doc_ids = list(corpus.keys())
     # doc_texts = [
@@ -675,7 +754,13 @@ def run_retrieval_for_collection(
                 top_parents = sorted(best.items(), key=lambda x: -x[1])[:top_k]
                 ctxs = [{"document_id": pid, "score": float(sc)} for pid, sc in top_parents]
 
-        results.append({"task_id": qid, "contexts": ctxs, "Collection": cfg["collection_name"]})
+        # results.append({"task_id": qid, "contexts": ctxs, "Collection": cfg["collection_name"]})
+        results.append({
+            "task_id": qid,
+            "contexts": ctxs,
+            "Collection": (collection_out or cfg["collection_name"]),
+        })
+
     return results
 
 
@@ -708,7 +793,7 @@ def run_official_eval(input_file: str, output_file: str, model_name: str, task_n
 # -----------------------------
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--task", type=str, default="lastturn", choices=["lastturn", "questions", "rewrite", "rewrite_gpt", "rewrite_gpt_ir"])
+    ap.add_argument("--task", type=str, default="lastturn", choices=["lastturn", "questions", "rewrite", "rewrite_gpt", "rewrite_gpt_ir", "rewrite_gpt_keywords"])
     ap.add_argument("--model_dir", type=str, default="jasper-ft-lastturn", help="FT model folder")
     ap.add_argument("--base_dir", type=str, default=None, help="Base Jasper folder to sync remote-code *.py if missing")
     ap.add_argument("--model_name", type=str, default="jasper_1222", help="Name used in output filenames / official eval")
@@ -751,6 +836,15 @@ def main():
         default="text",
         help="Which field to use as document text in corpus JSONL. e.g. text or ctx_text"
     )
+
+    ap.add_argument("--test_input_jsonl", type=str, default=None,
+                    help="If set, run TaskA submission on this test jsonl (conversation-format).")
+    ap.add_argument("--query_mode", type=str, default="last_user", choices=["last_user", "full"])
+    ap.add_argument("--query_last_n", type=int, default=None,
+                    help="Only used when query_mode=full. Keep last N messages.")
+    ap.add_argument("--skip_official_eval", action="store_true",
+                    help="Do not run scripts/evaluation/run_retrieval_eval.py (useful for test submission).")
+
 
 
     args = ap.parse_args()
@@ -842,7 +936,24 @@ def main():
     print("Start!")
     print("Current task:", args.task)
 
+    test_queries_by_domain = None
+    if args.test_input_jsonl:
+        test_queries_by_domain = load_test_taska_queries(
+            args.test_input_jsonl,
+            query_mode=args.query_mode,
+            last_n=args.query_last_n,
+        )
+
+
     for name, cfg in COLLECTIONS.items():
+        if test_queries_by_domain is not None:
+            if name not in test_queries_by_domain:
+                continue
+            queries_override = test_queries_by_domain[name]
+            collection_out = name   # 输出用短名 fiqa/govt/...
+        else:
+            queries_override = None
+            collection_out = None
         res = run_retrieval_for_collection(
             name=name,
             cfg=cfg,
@@ -868,6 +979,8 @@ def main():
             expand_topm=args.expand_topm,
             pack_agg=args.pack_agg,
             corpus_text_key=args.corpus_text_key,
+            queries_override=queries_override,
+            collection_out=collection_out,
         )
         all_results.extend(res)
 
@@ -876,7 +989,10 @@ def main():
             f.write(json.dumps(item, ensure_ascii=False) + "\n")
 
     print("Saved submission to:", sub_path)
-    run_official_eval(sub_path, scored_path, model_name=args.model_name, task_name=args.task)
+    if not args.skip_official_eval:
+        run_official_eval(sub_path, scored_path, model_name=args.model_name, task_name=args.task)
+
+    # run_official_eval(sub_path, scored_path, model_name=args.model_name, task_name=args.task)
 
 
 if __name__ == "__main__":
