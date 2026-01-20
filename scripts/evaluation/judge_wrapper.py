@@ -7,8 +7,8 @@ from ragas import evaluate, RunConfig
 from ragas.metrics import faithfulness, answer_relevancy, context_precision, context_recall
 from judge_utils import *
 
-from langchain.chat_models import AzureChatOpenAI
-from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain_openai import AzureChatOpenAI
+from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_openai.embeddings import AzureOpenAIEmbeddings
 
 from huggingface_client import HuggingFaceLLMClient
@@ -17,12 +17,12 @@ from azure_openai_client import AzureOpenAIClient
 from datasets import Dataset
 from typing import List, Optional, Any
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
-from langchain.callbacks.manager import CallbackManagerForLLMRun
+from langchain_core.callbacks.manager import CallbackManagerForLLMRun
 from ragas.metrics import faithfulness, context_recall, context_precision, answer_relevancy
 from ragas import evaluate
 from ragas.llms import LangchainLLMWrapper
 from ragas.run_config import RunConfig
-from langchain.llms.base import LLM
+from langchain_openai import ChatOpenAI
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -38,7 +38,7 @@ def clear_cuda():
 # ================================================
 # Local LLM class for running RAGAS locally
 # ================================================
-class LocalLLM(LLM):
+class LocalLLM(ChatOpenAI):
     tokenizer: AutoTokenizer = None
     model: AutoModelForCausalLM = None
 
