@@ -793,7 +793,7 @@ def run_official_eval(input_file: str, output_file: str, model_name: str, task_n
 # -----------------------------
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--task", type=str, default="lastturn", choices=["lastturn", "questions", "rewrite", "rewrite_gpt", "rewrite_gpt_ir", "rewrite_gpt_keywords"])
+    ap.add_argument("--task", type=str, default="lastturn", choices=["lastturn", "questions", "rewrite", "rewrite_gpt", "rewrite_gpt_ir", "rewrite_gpt_keywords", "concat_lastturn_rewrite_gpt"])
     ap.add_argument("--model_dir", type=str, default="jasper-ft-lastturn", help="FT model folder")
     ap.add_argument("--base_dir", type=str, default=None, help="Base Jasper folder to sync remote-code *.py if missing")
     ap.add_argument("--model_name", type=str, default="jasper_1222", help="Name used in output filenames / official eval")

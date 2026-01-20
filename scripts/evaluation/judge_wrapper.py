@@ -38,49 +38,85 @@ def clear_cuda():
 # ================================================
 # Local LLM class for running RAGAS locally
 # ================================================
-class LocalLLM(ChatOpenAI):
+class LocalLLM:
     tokenizer: AutoTokenizer = None
     model: AutoModelForCausalLM = None
 
     def __init__(self, mode_name_or_path: str):
-        super().__init__()
         self.tokenizer = AutoTokenizer.from_pretrained(mode_name_or_path)
-        
         if self.tokenizer.pad_token_id is None:
             self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
-        self.model = AutoModelForCausalLM.from_pretrained(mode_name_or_path,attn_implementation="flash_attention_2", device_map="auto",  torch_dtype="bfloat16", 
-                                                            load_in_4bit=True,
-                                                            bnb_4bit_compute_dtype=torch.bfloat16,
-                                                          )
+        self.model = AutoModelForCausalLM.from_pretrained(
+            mode_name_or_path,
+            device_map="auto",
+            torch_dtype="float16",
+            # 如果你想4bit就保留 load_in_4bit=True (需 bitsandbytes)
+        )
         self.model.generation_config = GenerationConfig.from_pretrained(mode_name_or_path)
 
-    def _call(
-            self,
-            prompt: str,
-            stop: Optional[List[str]] = None,
-            run_manager: Optional[CallbackManagerForLLMRun] = None,
-            **kwargs: Any,
-    ) -> str:
+    def _call(self, prompt: str, stop=None, run_manager=None, **kwargs) -> str:
         messages = [{"role": "user", "content": prompt}]
-        input_ids = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        model_inputs = self.tokenizer([input_ids], return_tensors="pt").to(self.model.device)
-        generated_ids = self.model.generate(model_inputs.input_ids, 
-                                            max_new_tokens=2048, 
-                                            attention_mask= model_inputs["attention_mask"], pad_token_id=self.tokenizer.pad_token_id)
-        
-        # generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
-        # response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        
+        rendered = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        model_inputs = self.tokenizer([rendered], return_tensors="pt").to(self.model.device)
+        generated_ids = self.model.generate(
+            model_inputs.input_ids,
+            max_new_tokens=2048,
+            attention_mask=model_inputs["attention_mask"],
+            pad_token_id=self.tokenizer.pad_token_id,
+        )
         input_length = model_inputs["input_ids"].shape[1]
         new_tokens = generated_ids[:, input_length:]
-        response = self.tokenizer.batch_decode(new_tokens, skip_special_tokens=True)[0]
-        
-        return response
+        return self.tokenizer.batch_decode(new_tokens, skip_special_tokens=True)[0]
 
     @property
     def _llm_type(self):
         return "chat"
+
+
+# class LocalLLM(ChatOpenAI):
+#     tokenizer: AutoTokenizer = None
+#     model: AutoModelForCausalLM = None
+
+#     def __init__(self, mode_name_or_path: str):
+#         super().__init__()
+#         self.tokenizer = AutoTokenizer.from_pretrained(mode_name_or_path)
+        
+#         if self.tokenizer.pad_token_id is None:
+#             self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
+
+#         self.model = AutoModelForCausalLM.from_pretrained(mode_name_or_path,attn_implementation="flash_attention_2", device_map="auto",  torch_dtype="bfloat16", 
+#                                                             load_in_4bit=True,
+#                                                             bnb_4bit_compute_dtype=torch.bfloat16,
+#                                                           )
+#         self.model.generation_config = GenerationConfig.from_pretrained(mode_name_or_path)
+
+#     def _call(
+#             self,
+#             prompt: str,
+#             stop: Optional[List[str]] = None,
+#             run_manager: Optional[CallbackManagerForLLMRun] = None,
+#             **kwargs: Any,
+#     ) -> str:
+#         messages = [{"role": "user", "content": prompt}]
+#         input_ids = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+#         model_inputs = self.tokenizer([input_ids], return_tensors="pt").to(self.model.device)
+#         generated_ids = self.model.generate(model_inputs.input_ids, 
+#                                             max_new_tokens=2048, 
+#                                             attention_mask= model_inputs["attention_mask"], pad_token_id=self.tokenizer.pad_token_id)
+        
+#         # generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
+#         # response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        
+#         input_length = model_inputs["input_ids"].shape[1]
+#         new_tokens = generated_ids[:, input_length:]
+#         response = self.tokenizer.batch_decode(new_tokens, skip_special_tokens=True)[0]
+        
+#         return response
+
+#     @property
+#     def _llm_type(self):
+#         return "chat"
 
 # ================================================
 # Get IDK conditioning score
