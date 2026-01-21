@@ -459,7 +459,7 @@ def build_or_load_index_for_domain(
 # -----------------------------
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--task", required=True, choices=["lastturn", "questions", "rewrite", "rewrite_gpt", "rewrite_gpt_keywords"])
+    ap.add_argument("--task", required=True, choices=["lastturn", "questions", "rewrite", "rewrite_gpt", "rewrite_gpt_keywords", "concat_lastturn_rewrite_gpt"])
     ap.add_argument("--retrieval_tasks_root", default="human/retrieval_tasks")
     ap.add_argument("--out_jsonl", required=True)
     ap.add_argument("--top_k", type=int, default=100)

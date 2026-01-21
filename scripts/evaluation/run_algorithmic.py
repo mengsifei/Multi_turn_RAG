@@ -25,6 +25,12 @@ import html
 import re
 import string
 from bs4 import BeautifulSoup
+import torch 
+
+import os
+
+BERTSCORE_MODEL_TYPE = os.environ.get("BERTSCORE_MODEL_TYPE", "microsoft/deberta-v3-large")
+
 
 class LABELS:
     ANSWERABLE = "ANSWERABLE"
@@ -32,6 +38,21 @@ class LABELS:
 
 def remove_articles(text: str):
     return re.sub(r"\b(a|an|the)\b", " ", text)
+
+
+def bertscore_batch(predictions: list[str], references: list[str], lang="en"):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    score = bertscore_metric.compute(
+        predictions=predictions,
+        references=references,
+        lang=lang,
+        rescale_with_baseline=False,
+        model_type=BERTSCORE_MODEL_TYPE,
+        device=device,
+        batch_size=64,
+    )
+    # bertscore metric 返回 list
+    return score["f1"], score["precision"], score["recall"]
 
 
 def normalize_white_spaces(text):
@@ -105,13 +126,17 @@ def bertscore(
     lang: str = "en",
     **kwargs,
 ) -> Tuple[float, float, float]:
-
+    # _ensure_deberta_safetensors("microsoft/deberta-xlarge-mnli")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     score = bertscore_metric.compute(
         predictions=[prediction],
         references=[target],
         lang=lang,
-        rescale_with_baseline=True,
-        model_type="microsoft/deberta-xlarge-mnli",
+        rescale_with_baseline=False,
+        # model_type="microsoft/deberta-xlarge-mnli",
+        model_type=BERTSCORE_MODEL_TYPE,
+        device=device,      # 自动选 GPU 或 CPU
+        batch_size=64   
     )
     return score["f1"][0], score["precision"][0], score["recall"][0]
 
@@ -230,36 +255,95 @@ def read_json_with_pandas(filepath: str) -> pd.DataFrame:
         dtype={"task_id": str, "conversation_id": str},
     )
 
-def score(instance: dict, metrics: Dict[str, dict]) -> List[dict]:
+# def score(instance: dict, metrics: Dict[str, dict]) -> List[dict]:
 
+#     if "metrics" not in instance:
+#         instance["metrics"] = {}
+
+#     for metric, scorer in metrics.items():
+        
+
+#         if "target" in scorer["target"]:
+#             targets = instance["targets"]
+#         elif scorer["target"] == "passage":
+#             targets = instance["contexts"]
+
+#         if scorer["prediction"] == "prediction":
+#             prediction = instance["predictions"][0]["text"]
+        
+#         for target in targets:
+#             if scorer["target"] == "target_label":
+#                 target = target["enrichments"]["answerability"]
+#             else:
+#                 target = target["text"]
+
+#             if metric not in instance["metrics"]:
+#                 instance["metrics"][metric] = []
+#             if metric == 'RB_agg':
+#                 scorer["func"](instance)
+#             else:
+#                 instance["metrics"][metric].append(
+#                     scorer["func"](prediction, target, lang="en")
+#                 )
+
+
+def score(instance: dict, metrics: Dict[str, dict]) -> List[dict]:
     if "metrics" not in instance:
         instance["metrics"] = {}
 
-    for metric, scorer in metrics.items():
-        
+    prediction = instance["predictions"][0]["text"]
 
+    # 预先准备 targets/context 文本 list（后面重复用）
+    target_texts = [t["text"] for t in instance.get("targets", [])]
+    passage_texts = [t["text"] for t in instance.get("contexts", [])]
+
+    # ---- 关键：BERTScore 批量算（每条样本一次），避免 compute() 被调用很多次 ----
+    need_bs_p = "BertscoreP" in metrics and "BertscoreP" not in instance["metrics"]
+    need_bs_r = "BertscoreR" in metrics and "BertscoreR" not in instance["metrics"]
+
+    # 只有当本条样本需要 Bertscore 并且 targets 存在时才算
+    if (need_bs_p or need_bs_r) and len(target_texts) > 0:
+        preds = [prediction] * len(target_texts)
+        ps, rs, _ = bertscore_batch(preds, target_texts, lang="en")
+        if need_bs_p:
+            instance["metrics"]["BertscoreP"] = ps
+        if need_bs_r:
+            instance["metrics"]["BertscoreR"] = rs
+
+    # ---- 其它 metric 仍按原逻辑逐 target ----
+    for metric, scorer in metrics.items():
+        # RB_agg 依赖其它指标都算完；放到最后也行，这里保持你原逻辑
+        if metric == "RB_agg":
+            scorer["func"](instance)
+            continue
+
+        # BertscoreP/R 已经批量写入了，跳过逐条算
+        if metric in ("BertscoreP", "BertscoreR"):
+            continue
+
+        # 选择 targets 来源
         if "target" in scorer["target"]:
             targets = instance["targets"]
         elif scorer["target"] == "passage":
             targets = instance["contexts"]
+        else:
+            targets = instance["targets"]  # 兜底
 
-        if scorer["prediction"] == "prediction":
-            prediction = instance["predictions"][0]["text"]
-        
-        for target in targets:
+        # 初始化容器
+        if metric not in instance["metrics"]:
+            instance["metrics"][metric] = []
+
+        # 逐 target 计算（非 bertscore）
+        for t in targets:
             if scorer["target"] == "target_label":
-                target = target["enrichments"]["answerability"]
+                target = t["enrichments"]["answerability"]
             else:
-                target = target["text"]
+                target = t["text"]
 
-            if metric not in instance["metrics"]:
-                instance["metrics"][metric] = []
-            if metric == 'RB_agg':
-                scorer["func"](instance)
-            else:
-                instance["metrics"][metric].append(
-                    scorer["func"](prediction, target, lang="en")
-                )
+            instance["metrics"][metric].append(
+                scorer["func"](prediction, target, lang="en")
+            )
+
 
 
 def process(
@@ -275,7 +359,10 @@ def process(
     logger.info("==============================================================")
     
     model_predictions = read_json_with_pandas(filepath=f"{input_file}")
-    os.makedirs(os.path.dirname(metrics_filename), exist_ok=True)
+    out_dir = os.path.dirname(metrics_filename)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+
     
     with open(metrics_filename, mode="w", encoding="utf-8") as fp:
 

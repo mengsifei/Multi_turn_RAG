@@ -151,13 +151,13 @@ def generate_qa_prompt(question: str, context: str) -> str:
 
 <Task>
 Answer the question using ONLY the provided documents. You should think step by step, carefully reading throught the context provided, provide evidence (quotations) from the text. Your answer should be in format:
-```
+
 
 <Arguments>\n\n
 Your thinking and quotations\n\n </Arguments>\n\n
 ===\n\n <Answer>: your final answer
 
-```
+
 If the answer cannot be determined from the documents, say "I don't know." 
 </Task>
 
@@ -165,6 +165,50 @@ If the answer cannot be determined from the documents, say "I don't know."
 {context}
 </Contexts>
 """
+
+def prompt_official_grounded_v1(question: str, context: str) -> str:
+    return f"""
+Given the following documents and a user question, generate a concise answer
+(less than 150 words) that is grounded in the provided documents.
+
+- Use only information that can be supported by the documents.
+- You may paraphrase and summarize across documents.
+- Do NOT quote verbatim unless necessary.
+- If the documents do not contain enough information to answer the question,
+  say: "I do not have specific information."
+
+[Documents]
+{context}
+
+[Question]
+{question}
+
+[Answer]
+"""
+
+
+def prompt_grounded_with_evidence_v1(question: str, context: str) -> str:
+    return f"""
+Answer the question using the provided documents.
+
+Guidelines:
+- The answer must be supported by the documents.
+- You may combine information from multiple documents.
+- You may paraphrase; exact quotations are optional.
+- Briefly mention which document(s) support your answer.
+- If the documents clearly do not contain the answer,
+  say: "I do not have specific information."
+
+[Documents]
+{context}
+
+[Question]
+{question}
+
+[Answer]
+"""
+
+
 
 
 def generate_qa_prompt_from_docs(

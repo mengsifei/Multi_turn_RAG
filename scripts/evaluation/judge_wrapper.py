@@ -3,13 +3,15 @@ import numpy as np
 import ast
 import os
 from datasets import Dataset 
-from ragas import evaluate, RunConfig
-from ragas.metrics import faithfulness, answer_relevancy, context_precision, context_recall
+
+# from ragas import evaluate, RunConfig
+# from ragas.metrics import faithfulness, answer_relevancy, context_precision, context_recall
 from judge_utils import *
 
-from langchain_openai import AzureChatOpenAI
+# from langchain_openai import AzureChatOpenAI
 from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_openai.embeddings import AzureOpenAIEmbeddings
+from deepseek_client import DeepSeekClient
 
 from huggingface_client import HuggingFaceLLMClient
 from azure_openai_client import AzureOpenAIClient
@@ -18,11 +20,13 @@ from datasets import Dataset
 from typing import List, Optional, Any
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 from langchain_core.callbacks.manager import CallbackManagerForLLMRun
-from ragas.metrics import faithfulness, context_recall, context_precision, answer_relevancy
-from ragas import evaluate
-from ragas.llms import LangchainLLMWrapper
-from ragas.run_config import RunConfig
-from langchain_openai import ChatOpenAI
+# from ragas.metrics import faithfulness, context_recall, context_precision, answer_relevancy
+# from ragas import evaluate
+# from ragas.llms import LangchainLLMWrapper
+# from ragas.run_config import RunConfig
+# from langchain_openai import ChatOpenAI
+
+
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -35,88 +39,65 @@ def clear_cuda():
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()
 
-# ================================================
-# Local LLM class for running RAGAS locally
-# ================================================
-class LocalLLM:
-    tokenizer: AutoTokenizer = None
-    model: AutoModelForCausalLM = None
-
-    def __init__(self, mode_name_or_path: str):
-        self.tokenizer = AutoTokenizer.from_pretrained(mode_name_or_path)
-        if self.tokenizer.pad_token_id is None:
-            self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
-
-        self.model = AutoModelForCausalLM.from_pretrained(
-            mode_name_or_path,
-            device_map="auto",
-            torch_dtype="float16",
-            # 如果你想4bit就保留 load_in_4bit=True (需 bitsandbytes)
-        )
-        self.model.generation_config = GenerationConfig.from_pretrained(mode_name_or_path)
-
-    def _call(self, prompt: str, stop=None, run_manager=None, **kwargs) -> str:
-        messages = [{"role": "user", "content": prompt}]
-        rendered = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        model_inputs = self.tokenizer([rendered], return_tensors="pt").to(self.model.device)
-        generated_ids = self.model.generate(
-            model_inputs.input_ids,
-            max_new_tokens=2048,
-            attention_mask=model_inputs["attention_mask"],
-            pad_token_id=self.tokenizer.pad_token_id,
-        )
-        input_length = model_inputs["input_ids"].shape[1]
-        new_tokens = generated_ids[:, input_length:]
-        return self.tokenizer.batch_decode(new_tokens, skip_special_tokens=True)[0]
-
-    @property
-    def _llm_type(self):
-        return "chat"
+def _lazy_import_ragas_and_langchain():
+    # 只有在真的要跑 ragas 的时候才 import
+    from datasets import Dataset
+    from ragas import evaluate
+    from ragas.run_config import RunConfig
+    from ragas.metrics import faithfulness
+    from ragas.llms import LangchainLLMWrapper
+    from langchain_openai import AzureChatOpenAI, ChatOpenAI
+    return Dataset, evaluate, RunConfig, faithfulness, LangchainLLMWrapper, AzureChatOpenAI, ChatOpenAI
 
 
-# class LocalLLM(ChatOpenAI):
-#     tokenizer: AutoTokenizer = None
-#     model: AutoModelForCausalLM = None
+    # ================================================
+    # Local LLM class for running RAGAS locally
+    # ================================================
 
-#     def __init__(self, mode_name_or_path: str):
-#         super().__init__()
-#         self.tokenizer = AutoTokenizer.from_pretrained(mode_name_or_path)
-        
-#         if self.tokenizer.pad_token_id is None:
-#             self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
-#         self.model = AutoModelForCausalLM.from_pretrained(mode_name_or_path,attn_implementation="flash_attention_2", device_map="auto",  torch_dtype="bfloat16", 
-#                                                             load_in_4bit=True,
-#                                                             bnb_4bit_compute_dtype=torch.bfloat16,
-#                                                           )
-#         self.model.generation_config = GenerationConfig.from_pretrained(mode_name_or_path)
+    class LocalLLM:
+        tokenizer: AutoTokenizer = None
+        model: AutoModelForCausalLM = None
 
-#     def _call(
-#             self,
-#             prompt: str,
-#             stop: Optional[List[str]] = None,
-#             run_manager: Optional[CallbackManagerForLLMRun] = None,
-#             **kwargs: Any,
-#     ) -> str:
-#         messages = [{"role": "user", "content": prompt}]
-#         input_ids = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-#         model_inputs = self.tokenizer([input_ids], return_tensors="pt").to(self.model.device)
-#         generated_ids = self.model.generate(model_inputs.input_ids, 
-#                                             max_new_tokens=2048, 
-#                                             attention_mask= model_inputs["attention_mask"], pad_token_id=self.tokenizer.pad_token_id)
-        
-#         # generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
-#         # response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        
-#         input_length = model_inputs["input_ids"].shape[1]
-#         new_tokens = generated_ids[:, input_length:]
-#         response = self.tokenizer.batch_decode(new_tokens, skip_special_tokens=True)[0]
-        
-#         return response
+        def __init__(self, mode_name_or_path: str):
+            super().__init__()
+            self.tokenizer = AutoTokenizer.from_pretrained(mode_name_or_path)
+            
+            if self.tokenizer.pad_token_id is None:
+                self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
-#     @property
-#     def _llm_type(self):
-#         return "chat"
+            self.model = AutoModelForCausalLM.from_pretrained(mode_name_or_path,attn_implementation="flash_attention_2", device_map="auto",  torch_dtype="bfloat16", 
+                                                                load_in_4bit=True,
+                                                                bnb_4bit_compute_dtype=torch.bfloat16,
+                                                            )
+            self.model.generation_config = GenerationConfig.from_pretrained(mode_name_or_path)
+
+        def _call(
+                self,
+                prompt: str,
+                stop: Optional[List[str]] = None,
+                run_manager: Optional[CallbackManagerForLLMRun] = None,
+                **kwargs: Any,
+        ) -> str:
+            messages = [{"role": "user", "content": prompt}]
+            input_ids = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            model_inputs = self.tokenizer([input_ids], return_tensors="pt").to(self.model.device)
+            generated_ids = self.model.generate(model_inputs.input_ids, 
+                                                max_new_tokens=2048, 
+                                                attention_mask= model_inputs["attention_mask"], pad_token_id=self.tokenizer.pad_token_id)
+            
+            # generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
+            # response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+            
+            input_length = model_inputs["input_ids"].shape[1]
+            new_tokens = generated_ids[:, input_length:]
+            response = self.tokenizer.batch_decode(new_tokens, skip_special_tokens=True)[0]
+            
+            return response
+
+        @property
+        def _llm_type(self):
+            return "chat"
 
 # ================================================
 # Get IDK conditioning score
@@ -162,6 +143,7 @@ def get_idk_conditioned_metrics(input_file, output_file):
 # Compute RAGAS Locally
 # ================================================
 def run_ragas_judges_local(judge_model, input_file, output_file):
+    Dataset, evaluate, RunConfig, faithfulness, LangchainLLMWrapper, AzureChatOpenAI, ChatOpenAI = _lazy_import_ragas_and_langchain()
     clear_cuda()
     model_predictions = read_json_with_pandas(filepath=f"{input_file}")
     
@@ -207,7 +189,7 @@ def run_ragas_judges_local(judge_model, input_file, output_file):
 # Compute RAGAS w/ OpenAI
 # ================================================
 def run_ragas_judges_openai(input_file, output_file, openai_key, azure_host):
-
+    Dataset, evaluate, RunConfig, faithfulness, LangchainLLMWrapper, AzureChatOpenAI, ChatOpenAI = _lazy_import_ragas_and_langchain()
     llm = AzureChatOpenAI(
         deployment_name="gpt-4o-mini-2024-07-18",
         openai_api_base=azure_host,
@@ -285,15 +267,22 @@ def run_radbench_judge(judge_model, input_file, output_file):
         
         if model_name.startswith("gpt-"):
             client = AzureOpenAIClient('gpt-4o-mini-2024-07-18')
+        elif model_name == "deepseek":
+            client = DeepSeekClient(model=os.environ.get("DEEPSEEK_JUDGE_MODEL", "deepseek-chat"))
         else:
             clear_cuda()
             client = HuggingFaceLLMClient(model_name)
+
         
         output_lst = ['' for i in range(len(user_inputs))]
         
         i=0
         for user_input in tqdm(user_inputs):
-            output = client.generate_response(user_input)
+            # output = client.generate_response(user_input)
+            if model_name == "deepseek":
+                output = client.generate_response(user_input, temperature=0.0, max_tokens=800)
+            else:
+                output = client.generate_response(user_input)
             output_lst[i] = output
             i += 1
     
@@ -322,9 +311,12 @@ def run_idk_judge(model_name, input_file, output_file):
     
     if model_name == "openai":
         client = AzureOpenAIClient('gpt-4o-mini-2024-07-18')
+    elif model_name == "deepseek":
+        client = DeepSeekClient(model=os.environ.get("DEEPSEEK_JUDGE_MODEL", "deepseek-chat"))
     else:
         clear_cuda()
         client = HuggingFaceLLMClient(model_name)
+
         
     model_predictions = read_json_with_pandas(filepath=f"{input_file}")
     
@@ -337,8 +329,11 @@ def run_idk_judge(model_name, input_file, output_file):
     for cur_prompt in tqdm(formatted_conversations):
         if model_name == "openai":
             response = client.generate_response(cur_prompt)
+        elif model_name == "deepseek":
+            response = client.generate_response(cur_prompt, temperature=0.0, max_tokens=3)
         else:
-            response = client.generate_response(cur_prompt, max_new_tokens = 3)
+            response = client.generate_response(cur_prompt, max_new_tokens=3)
+
         response_lst.append(response)
             
     model_predictions['idk_eval'] = response_lst

@@ -293,7 +293,7 @@ def count_lines(path: Path) -> int:
 def main():
     ap = argparse.ArgumentParser()
 
-    ap.add_argument("--task", required=True, choices=["lastturn", "questions", "rewrite", "rewrite_gpt"])
+    ap.add_argument("--task", required=True, choices=["lastturn", "questions", "rewrite", "rewrite_gpt", "concat_lastturn_rewrite_gpt"])
     ap.add_argument("--in_jsonl", required=True)
     ap.add_argument("--out_jsonl", required=True)
 
