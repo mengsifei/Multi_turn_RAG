@@ -209,6 +209,34 @@ Guidelines:
 """
 
 
+def prompt_grounded_selfcheck_v4(question: str, context: str) -> str:
+    return f"""
+Given the following documents and a user question, produce a concise answer grounded ONLY in the documents.
+
+Internal process (DO NOT output these steps):
+1) Draft an answer.
+2) Split your draft into individual factual sentences.
+3) For each sentence, verify it is explicitly supported by the documents. If a sentence is not directly supported, delete it or rewrite it into a weaker, strictly supported statement.
+4) Ensure the final answer directly addresses the user question.
+
+Output rules (MUST follow):
+- Output ONLY the final answer text.
+- Plain text only (no markdown, no bullet points, no headings).
+- Do NOT mention document numbers/sources and do NOT include an evidence section.
+- Less than 150 words.
+- If the documents do not contain enough information to answer, output exactly:
+I do not have specific information.
+- Do not output any prefixes like "Answer:" or "Final Answer:".
+
+[Documents]
+{context}
+
+[Question]
+{question}
+
+[Final Answer]
+""".strip()
+
 
 
 def generate_qa_prompt_from_docs(
@@ -342,13 +370,22 @@ def main(args: argparse.Namespace) -> None:
                 n_skip_no_ctx += 1
                 continue
 
-            prompt = generate_qa_prompt_from_docs(
-                question=question,
+            context = docs_to_context(
                 docs=ctxs,
                 max_doc_chars=args.max_doc_chars,
                 use_doc_id_in_header=args.doc_id_in_header,
                 include_score=args.include_score,
             )
+
+            if args.prompt_style == "official":
+                prompt = prompt_official_grounded_v1(question, context)
+            elif args.prompt_style == "evidence":
+                prompt = prompt_grounded_with_evidence_v1(question, context)
+            elif args.prompt_style == "v4":
+                prompt = prompt_grounded_selfcheck_v4(question, context)
+            else:
+                prompt = generate_qa_prompt(question, context)
+
 
             row = {
                 "task_id": task_id,
@@ -396,5 +433,9 @@ if __name__ == "__main__":
                     help="if rewrite query missing, fallback to last user question in `input` (default on)")
     ap.add_argument("--add_ctx_count", action="store_true", help="add n_contexts column to CSV")
     ap.add_argument("--add_question_source", action="store_true", help="add question_source column (rewrite/last_user)")
+    ap.add_argument("--prompt_style", type=str, default="v4",
+                choices=["qa", "official", "evidence", "v4"],
+                help="which prompt template to use")
+
     args = ap.parse_args()
     main(args)

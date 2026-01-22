@@ -72,13 +72,13 @@ def main():
                 skip_no_gold += 1
                 continue
 
-            targets = g.get("targets", None)
-            if not isinstance(targets, list) or len(targets) == 0:
-                skip_gold_no_targets += 1
-                continue
+            # targets = g.get("targets", None)
+            # if not isinstance(targets, list) or len(targets) == 0:
+            #     skip_gold_no_targets += 1
+            #     continue
 
             out = dict(rec)
-            out["targets"] = targets
+            # out["targets"] = targets
             if "input" in g and g["input"] is not None:
                 out["input"] = g["input"]
             if "answerability" in g:

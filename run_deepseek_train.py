@@ -138,6 +138,11 @@ def main():
             df.at[idx, "model"] = args.model
             df.at[idx, "temperature"] = args.temp
             df.at[idx, "error"] = ""
+            # force string dtype to avoid FutureWarning (future pandas will error)
+            for c in [args.answer_col, "raw_response_json", "model", "error"]:
+                df[c] = df[c].astype("string")
+            df["temperature"] = pd.to_numeric(df["temperature"], errors="coerce")
+
             newly_done += 1
         except Exception as e:
             # 网络/DNS炸了：先落盘，再退出，下次继续补空行

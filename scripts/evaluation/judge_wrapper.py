@@ -6,15 +6,15 @@ from datasets import Dataset
 
 # from ragas import evaluate, RunConfig
 # from ragas.metrics import faithfulness, answer_relevancy, context_precision, context_recall
-from judge_utils import *
+from scripts.evaluation.judge_utils import *
 
 # from langchain_openai import AzureChatOpenAI
 from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_openai.embeddings import AzureOpenAIEmbeddings
-from deepseek_client import DeepSeekClient
+from scripts.evaluation.deepseek_client import DeepSeekClient
 
-from huggingface_client import HuggingFaceLLMClient
-from azure_openai_client import AzureOpenAIClient
+from scripts.evaluation.huggingface_client import HuggingFaceLLMClient
+from scripts.evaluation.azure_openai_client import AzureOpenAIClient
 
 from datasets import Dataset
 from typing import List, Optional, Any
