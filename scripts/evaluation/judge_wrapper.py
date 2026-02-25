@@ -13,7 +13,7 @@ from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_openai.embeddings import AzureOpenAIEmbeddings
 from scripts.evaluation.deepseek_client import DeepSeekClient
 
-from scripts.evaluation.huggingface_client import HuggingFaceLLMClient
+# from scripts.evaluation.huggingface_client import HuggingFaceLLMClient
 from scripts.evaluation.azure_openai_client import AzureOpenAIClient
 
 from datasets import Dataset
@@ -33,6 +33,60 @@ warnings.filterwarnings('ignore')
 import torch
 import gc
 
+class HuggingFaceLLMClient:
+    def __init__(self, model_name: str, device: str = "cuda", dtype: str = "bf16"):
+        self.model_name = model_name
+        self.device = device
+
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        self.tokenizer.padding_side = "left"
+        if self.tokenizer.pad_token_id is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+
+        torch_dtype = torch.bfloat16 if dtype == "bf16" else torch.float16
+
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            trust_remote_code=True,
+            torch_dtype=torch_dtype,
+        ).to(self.device)                     # ✅ 强制整个模型上 GPU
+        self.model.eval()
+
+        # ✅ 打印确认
+        print("[HFClient] cuda_available=", torch.cuda.is_available())
+        print("[HFClient] model_device=", next(self.model.parameters()).device)
+
+
+    @torch.inference_mode()
+    def generate_response(self, user_input: str, temperature: float = 0.0, max_tokens: int = 800, **kwargs):
+        # 兼容外部传 max_new_tokens
+        if "max_new_tokens" in kwargs and kwargs["max_new_tokens"] is not None:
+            max_tokens = int(kwargs["max_new_tokens"])
+
+        messages = [
+            {"role": "system", "content": "You are a strict evaluator. Follow the instructions exactly."},
+            {"role": "user", "content": user_input},
+        ]
+        prompt = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+
+        do_sample = (temperature is not None and temperature > 0)
+
+        gen_kwargs = dict(
+            max_new_tokens=max_tokens,
+            do_sample=do_sample,
+            eos_token_id=self.tokenizer.eos_token_id,
+            pad_token_id=self.tokenizer.pad_token_id,
+        )
+        if do_sample:
+            gen_kwargs["temperature"] = temperature
+            gen_kwargs["top_p"] = 1.0
+
+        gen = self.model.generate(**inputs, **gen_kwargs)
+        out = self.tokenizer.decode(gen[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True).strip()
+        return out
+
+
 def clear_cuda():
     gc.collect()
     if torch.cuda.is_available():
@@ -50,54 +104,55 @@ def _lazy_import_ragas_and_langchain():
     return Dataset, evaluate, RunConfig, faithfulness, LangchainLLMWrapper, AzureChatOpenAI, ChatOpenAI
 
 
-    # ================================================
-    # Local LLM class for running RAGAS locally
-    # ================================================
+from langchain_core.language_models.llms import LLM
+from typing import Optional, List
+import torch
 
+class LocalLLM(LLM):
+    model_name: str
+    max_new_tokens: int = 800
+    temperature: float = 0.0
 
-    class LocalLLM:
-        tokenizer: AutoTokenizer = None
-        model: AutoModelForCausalLM = None
+    def __init__(self, model_name: str, **kwargs):
+        super().__init__(**kwargs)
+        self.model_name = model_name
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_name, torch_dtype=torch.bfloat16, device_map="cuda", trust_remote_code=True
+        ).to("cuda")
+        self.tokenizer.padding_side = "left"
+        if self.tokenizer.pad_token_id is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        def __init__(self, mode_name_or_path: str):
-            super().__init__()
-            self.tokenizer = AutoTokenizer.from_pretrained(mode_name_or_path)
-            
-            if self.tokenizer.pad_token_id is None:
-                self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
+    @property
+    def _llm_type(self) -> str:
+        return "hf-qwen3"
 
-            self.model = AutoModelForCausalLM.from_pretrained(mode_name_or_path,attn_implementation="flash_attention_2", device_map="auto",  torch_dtype="bfloat16", 
-                                                                load_in_4bit=True,
-                                                                bnb_4bit_compute_dtype=torch.bfloat16,
-                                                            )
-            self.model.generation_config = GenerationConfig.from_pretrained(mode_name_or_path)
+    @torch.inference_mode()
+    def _call(self, prompt: str, stop: Optional[List[str]] = None, **kwargs) -> str:
+        messages = [
+            {"role": "system", "content": "You are a strict evaluator. Follow the instructions exactly."},
+            {"role": "user", "content": prompt},
+        ]
+        text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        inputs = self.tokenizer(text, return_tensors="pt").to(self.model.device)
 
-        def _call(
-                self,
-                prompt: str,
-                stop: Optional[List[str]] = None,
-                run_manager: Optional[CallbackManagerForLLMRun] = None,
-                **kwargs: Any,
-        ) -> str:
-            messages = [{"role": "user", "content": prompt}]
-            input_ids = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-            model_inputs = self.tokenizer([input_ids], return_tensors="pt").to(self.model.device)
-            generated_ids = self.model.generate(model_inputs.input_ids, 
-                                                max_new_tokens=2048, 
-                                                attention_mask= model_inputs["attention_mask"], pad_token_id=self.tokenizer.pad_token_id)
-            
-            # generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
-            # response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-            
-            input_length = model_inputs["input_ids"].shape[1]
-            new_tokens = generated_ids[:, input_length:]
-            response = self.tokenizer.batch_decode(new_tokens, skip_special_tokens=True)[0]
-            
-            return response
+        do_sample = (self.temperature and self.temperature > 0)
+        gen_kwargs = dict(
+            max_new_tokens=self.max_new_tokens,
+            do_sample=do_sample,
+            eos_token_id=self.tokenizer.eos_token_id,
+            pad_token_id=self.tokenizer.pad_token_id,
+        )
+        if do_sample:
+            gen_kwargs["temperature"] = self.temperature if do_sample else None
+            gen_kwargs["top_p"] = 1.0
 
-        @property
-        def _llm_type(self):
-            return "chat"
+        gen = self.model.generate(**inputs, **gen_kwargs)
+
+        out = self.tokenizer.decode(gen[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True).strip()
+        return out
+
 
 # ================================================
 # Get IDK conditioning score

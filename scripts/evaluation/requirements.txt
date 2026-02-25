@@ -6,7 +6,7 @@ pandas
 evaluate
 bert_score
 rouge-score
-ragas
+# ragas
 protobuf
 sentencepiece
 pytrec_eval

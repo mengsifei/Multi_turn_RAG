@@ -16,6 +16,7 @@ tmp*.*
 # notebooks
 .ipynb_checkpoints/
 **/.ipynb_checkpoints/
+.ipynb
 
 # model checkpoints / large dirs
 Jasper-Token-Compression-600M/
@@ -50,3 +51,7 @@ Sifei*
 # local outputs
 Sifei_taskA.jsonl
 Sifei_taskC_pred.jsonl
+
+
+/*.jsonl
+/*.yml

@@ -1,0 +1,188 @@
+{"_id":"d5b1e735a040853ed361a3dfde1b8ef0<::>1","text":"|user|: Does IBM offer document databases?"}
+{"_id":"d5b1e735a040853ed361a3dfde1b8ef0<::>2","text":"|user|: In IBM's document database offering, can it store arbitrary JSON objects, or do I need to define fields in advance?"}
+{"_id":"d5b1e735a040853ed361a3dfde1b8ef0<::>3","text":"|user|: If I use IBM's document database, can I store an image or PDF as an attachment to a document?"}
+{"_id":"d5b1e735a040853ed361a3dfde1b8ef0<::>4","text":"|user|: Is there a file size limit for storing image or PDF attachments in IBM's document database?"}
+{"_id":"d5b1e735a040853ed361a3dfde1b8ef0<::>5","text":"|user|: Can IBM's document database store file attachments (such as images or PDFs) rather than treating them as document fields?"}
+{"_id":"d5b1e735a040853ed361a3dfde1b8ef0<::>6","text":"|user|: How do I get started with IBM Cloudant—should I find it in the IBM Cloud catalog?"}
+{"_id":"d5b1e735a040853ed361a3dfde1b8ef0<::>7","text":"|user|: What are the differences between the Lite and Standard plans for IBM Cloudant?"}
+{"_id":"d5b1e735a040853ed361a3dfde1b8ef0<::>8","text":"|user|: If I'm just exploring IBM Cloudant for now, should I stick to the Lite plan?"}
+{"_id":"d5b1e735a040853ed361a3dfde1b8ef0<::>9","text":"|user|: Where can I find the Python SDK for IBM Cloudant to push and fetch data?"}
+{"_id":"fdee20f7fd677e420742b09989623d68<::>1","text":"|user|: Is it worth having a web chat widget on my website?"}
+{"_id":"fdee20f7fd677e420742b09989623d68<::>2","text":"|user|: How do I add a web chat widget to my website?"}
+{"_id":"fdee20f7fd677e420742b09989623d68<::>3","text":"|user|: Can I extend a web chat widget on my website, and if so, how?"}
+{"_id":"fdee20f7fd677e420742b09989623d68<::>4","text":"|user|: Is a web chat widget secure enough to send sensitive data?"}
+{"_id":"fdee20f7fd677e420742b09989623d68<::>5","text":"|user|: How can I change the look and open/close behavior of my web chat widget?"}
+{"_id":"fdee20f7fd677e420742b09989623d68<::>6","text":"|user|: Why am I having trouble finding the web chat widget when I try to use it on my website?"}
+{"_id":"fdee20f7fd677e420742b09989623d68<::>7","text":"|user|: How can I add user identity information to my web chat widget?"}
+{"_id":"fdee20f7fd677e420742b09989623d68<::>8","text":"|user|: How does a web chat widget work on a website?"}
+{"_id":"be461bfeda2d4826cdb663dcaa7d1ced<::>1","text":"|user|: What are the steps to be taken to gather the relevant worker node data?"}
+{"_id":"be461bfeda2d4826cdb663dcaa7d1ced<::>2","text":"|user|: How can I update a classic worker node?"}
+{"_id":"be461bfeda2d4826cdb663dcaa7d1ced<::>3","text":"|user|: What is the difference between a major update and a minor update when updating a classic worker node?"}
+{"_id":"be461bfeda2d4826cdb663dcaa7d1ced<::>4","text":"|user|: What do the different parts of a worker node version tag represent (major, minor, patch)?"}
+{"_id":"be461bfeda2d4826cdb663dcaa7d1ced<::>5","text":"|user|: What worker node data should I collect before updating a classic worker node?"}
+{"_id":"be461bfeda2d4826cdb663dcaa7d1ced<::>6","text":"|user|: What is NodeSync in the context of worker nodes, and how is it used?"}
+{"_id":"be461bfeda2d4826cdb663dcaa7d1ced<::>7","text":"|user|: What is a worker node and what does it do?"}
+{"_id":"be461bfeda2d4826cdb663dcaa7d1ced<::>8","text":"|user|: How do worker nodes work in Red Hat OpenShift?"}
+{"_id":"be461bfeda2d4826cdb663dcaa7d1ced<::>9","text":"|user|: What services do Virtual Network Functions (VNFs) provide?"}
+{"_id":"1c041ce47a81941c26899fdf08bde961<::>1","text":"|user|: I cannot get a SELECT query to work; what steps should I take?"}
+{"_id":"1c041ce47a81941c26899fdf08bde961<::>2","text":"|user|: How do I define a query correctly so my SELECT query works?"}
+{"_id":"1c041ce47a81941c26899fdf08bde961<::>3","text":"|user|: How can I improve my SELECT query to get it working?"}
+{"_id":"1c041ce47a81941c26899fdf08bde961<::>4","text":"|user|: Can you give more details about the query API for running SELECT queries?"}
+{"_id":"1c041ce47a81941c26899fdf08bde961<::>5","text":"|user|: How can I address storage space limits—can I add or delete storage?"}
+{"_id":"1c041ce47a81941c26899fdf08bde961<::>6","text":"|user|: What is a data lake?"}
+{"_id":"1c041ce47a81941c26899fdf08bde961<::>7","text":"|user|: How do I create a schema or tables?"}
+{"_id":"1c041ce47a81941c26899fdf08bde961<::>8","text":"|user|: How do I use IBM Cloudant Query to run SELECT-style queries?"}
+{"_id":"1dcbbeb35d4d25ba1ffb787a9f2080e2<::>1","text":"|user|: How do I find specific conversations?"}
+{"_id":"1dcbbeb35d4d25ba1ffb787a9f2080e2<::>2","text":"|user|: Do I need a user ID to find a specific conversation?"}
+{"_id":"1dcbbeb35d4d25ba1ffb787a9f2080e2<::>3","text":"|user|: How do I create a user ID to find specific conversations?"}
+{"_id":"1dcbbeb35d4d25ba1ffb787a9f2080e2<::>4","text":"|user|: What is a strong password?"}
+{"_id":"1dcbbeb35d4d25ba1ffb787a9f2080e2<::>5","text":"|user|: What is the retention time for conversations?"}
+{"_id":"ddbbbe7ea13560c5768639207e1ca604<::>1","text":"|user|: What is the score agreement level if it is less than 0?"}
+{"_id":"ddbbbe7ea13560c5768639207e1ca604<::>2","text":"|user|: How many annotators are needed if the score agreement level is less than 0?"}
+{"_id":"ddbbbe7ea13560c5768639207e1ca604<::>3","text":"|user|: How does the required number of annotators change with the data volume when the score agreement level is less than 0?"}
+{"_id":"ddbbbe7ea13560c5768639207e1ca604<::>5","text":"|user|: If the score agreement level is less than 0, do I need at least three annotators?"}
+{"_id":"ddbbbe7ea13560c5768639207e1ca604<::>6","text":"|user|: Should I use one type of pre-annotation or a combination, and should I use different tools for conversational versus technical documents?"}
+{"_id":"ddbbbe7ea13560c5768639207e1ca604<::>7","text":"|user|: How do the three metrics correlate with each other in this annotation setup?"}
+{"_id":"81afaf82a0d9a5fad6eaa196f8d9641c<::>1","text":"|user|: How can I delete a key?"}
+{"_id":"81afaf82a0d9a5fad6eaa196f8d9641c<::>2","text":"|user|: What happens when the first user authorizes a key for deletion?"}
+{"_id":"81afaf82a0d9a5fad6eaa196f8d9641c<::>3","text":"|user|: What happens if the second user takes no action and the 7-day period expires after a key deletion is authorized?"}
+{"_id":"81afaf82a0d9a5fad6eaa196f8d9641c<::>4","text":"|user|: If the server has expired, can I remove the entry from the resource list?"}
+{"_id":"81afaf82a0d9a5fad6eaa196f8d9641c<::>5","text":"|user|: Why can't I delete keys?"}
+{"_id":"81afaf82a0d9a5fad6eaa196f8d9641c<::>6","text":"|user|: What could happen if I force-delete a key?"}
+{"_id":"81afaf82a0d9a5fad6eaa196f8d9641c<::>7","text":"|user|: What is cryptoshredding in the context of key deletion?"}
+{"_id":"81afaf82a0d9a5fad6eaa196f8d9641c<::>8","text":"|user|: How do backups affect key deletion and cryptoshredding?"}
+{"_id":"81afaf82a0d9a5fad6eaa196f8d9641c<::>9","text":"|user|: How do key deletion, cryptoshredding, and backups relate to disaster recovery?"}
+{"_id":"34ac6bedd4b35167cc59e289893e206a<::>2","text":"|user|: What is Red Hat OpenShift?"}
+{"_id":"34ac6bedd4b35167cc59e289893e206a<::>3","text":"|user|: What benefits does Red Hat OpenShift offer?"}
+{"_id":"34ac6bedd4b35167cc59e289893e206a<::>4","text":"|user|: How does virtualization work in Red Hat OpenShift?"}
+{"_id":"34ac6bedd4b35167cc59e289893e206a<::>5","text":"|user|: What solutions does Red Hat OpenShift provide?"}
+{"_id":"34ac6bedd4b35167cc59e289893e206a<::>6","text":"|user|: How does Red Hat OpenShift help with virtualization solutions?"}
+{"_id":"34ac6bedd4b35167cc59e289893e206a<::>7","text":"|user|: Do I need scripts to use Red Hat OpenShift virtualization?"}
+{"_id":"34ac6bedd4b35167cc59e289893e206a<::>8","text":"|user|: What is involved in installing Red Hat OpenShift for virtualization?"}
+{"_id":"34ac6bedd4b35167cc59e289893e206a<::>9","text":"|user|: How do clusters work in Red Hat OpenShift, especially for virtualization?"}
+{"_id":"f3a917e029970190be5ee508ba770d7f<::>1","text":"|user|: What are the steps involved to delete the CIS instance?"}
+{"_id":"f3a917e029970190be5ee508ba770d7f<::>2","text":"|user|: After deleting an IBM Cloud Internet Services (CIS) instance, do I need to import or recreate my DNS records in CIS?"}
+{"_id":"f3a917e029970190be5ee508ba770d7f<::>3","text":"|user|: Can I add a custom domain to an IBM Cloud Internet Services (CIS) instance?"}
+{"_id":"f3a917e029970190be5ee508ba770d7f<::>4","text":"|user|: What is the transport layer in the context of IBM Cloud Internet Services (CIS)?"}
+{"_id":"f3a917e029970190be5ee508ba770d7f<::>5","text":"|user|: Is privacy protected when using IBM Cloud Internet Services (CIS)?"}
+{"_id":"f3a917e029970190be5ee508ba770d7f<::>6","text":"|user|: What security features does IBM Cloud Internet Services (CIS) provide?"}
+{"_id":"f3a917e029970190be5ee508ba770d7f<::>7","text":"|user|: If I'm only allowed to use my firewall rules, how can I secure IBM Cloud Internet Services (CIS)?"}
+{"_id":"c01c8cf11437e6bb3bc93efac26528c2<::>1","text":"|user|: Should we switch to a different method for installing the mobile SDK, considering the current approach's limitations?"}
+{"_id":"c01c8cf11437e6bb3bc93efac26528c2<::>2","text":"|user|: What issues can arise when installing the mobile SDK with CocoaPods?"}
+{"_id":"c01c8cf11437e6bb3bc93efac26528c2<::>3","text":"|user|: What does the CocoaPods installation warning for the mobile SDK mean, and how should I address it?"}
+{"_id":"c01c8cf11437e6bb3bc93efac26528c2<::>4","text":"|user|: Can I install the mobile SDK without using CocoaPods?"}
+{"_id":"c01c8cf11437e6bb3bc93efac26528c2<::>5","text":"|user|: What are the instructions for installing the mobile SDK using Carthage instead of CocoaPods?"}
+{"_id":"1be66272113492407e814eaf21a761d4<::>1","text":"|user|: How can I compare the metrics for different periods?"}
+{"_id":"1be66272113492407e814eaf21a761d4<::>2","text":"|user|: Can you give examples of alerts for comparing metrics across different time periods?"}
+{"_id":"1be66272113492407e814eaf21a761d4<::>3","text":"|user|: What metrics should I focus on when comparing performance across different periods if I have a weak understanding of the metrics?"}
+{"_id":"1be66272113492407e814eaf21a761d4<::>4","text":"|user|: Are those conversations monitored when comparing metrics across different periods?"}
+{"_id":"1be66272113492407e814eaf21a761d4<::>5","text":"|user|: Are conversations billed by the number of turns or per conversation?"}
+{"_id":"1be66272113492407e814eaf21a761d4<::>6","text":"|user|: How can I filter messages when analyzing and comparing metrics across different periods?"}
+{"_id":"e1b602e47ded79a35d8df4eefe194e39<::>1","text":"|user|: Is it possible to build a dialog skill in a language other than English?"}
+{"_id":"e1b602e47ded79a35d8df4eefe194e39<::>2","text":"|user|: What other skills are available, and what languages are supported for them?"}
+{"_id":"e1b602e47ded79a35d8df4eefe194e39<::>3","text":"|user|: How many skills can I create?"}
+{"_id":"e1b602e47ded79a35d8df4eefe194e39<::>4","text":"|user|: Is Hebrew supported for building a dialog skill?"}
+{"_id":"e1b602e47ded79a35d8df4eefe194e39<::>5","text":"|user|: Can a Hebrew dialog skill handle right-to-left text (reverse text order)?"}
+{"_id":"e1b602e47ded79a35d8df4eefe194e39<::>7","text":"|user|: If I forget, how do I set the language and text direction for a Hebrew dialog skill?"}
+{"_id":"4175fcce99c56af0e02be5b8990fc16a<::>1","text":"|user|: How do cloud computing security protocols evolve over time, and what are the potential implications for restoring volumes from backup snapshots in IBM Cloud VPC?"}
+{"_id":"4175fcce99c56af0e02be5b8990fc16a<::>2","text":"|user|: What is data encryption in IBM Cloud VPC?"}
+{"_id":"4175fcce99c56af0e02be5b8990fc16a<::>3","text":"|user|: Is data encryption the same as data backup and disaster recovery in IBM Cloud VPC?"}
+{"_id":"4175fcce99c56af0e02be5b8990fc16a<::>4","text":"|user|: What is IBM Cloud VPC?"}
+{"_id":"4175fcce99c56af0e02be5b8990fc16a<::>5","text":"|user|: What are the different types of clouds?"}
+{"_id":"4175fcce99c56af0e02be5b8990fc16a<::>6","text":"|user|: Is IBM Cloud VPC free to use?"}
+{"_id":"4175fcce99c56af0e02be5b8990fc16a<::>7","text":"|user|: How do I use IBM Cloud VPC?"}
+{"_id":"4175fcce99c56af0e02be5b8990fc16a<::>8","text":"|user|: What are the benefits of using IBM Cloud VPC?"}
+{"_id":"f5a8ca2f2bc12180940167fb920bb018<::>1","text":"|user|: What are the different types of dialog nodes?"}
+{"_id":"f5a8ca2f2bc12180940167fb920bb018<::>2","text":"|user|: What are intents in a Watson Assistant dialog?"}
+{"_id":"f5a8ca2f2bc12180940167fb920bb018<::>3","text":"|user|: How are intents created in Watson Assistant?"}
+{"_id":"f5a8ca2f2bc12180940167fb920bb018<::>5","text":"|user|: Are those the only steps for creating intents and dialog nodes in Watson Assistant?"}
+{"_id":"f5a8ca2f2bc12180940167fb920bb018<::>6","text":"|user|: What is the difference between a dialog skill and a dialog node?"}
+{"_id":"f5a8ca2f2bc12180940167fb920bb018<::>7","text":"|user|: Which types of dialog nodes can I create?"}
+{"_id":"f5a8ca2f2bc12180940167fb920bb018<::>8","text":"|user|: Are there any advantages to adding a skill to my assistant?"}
+{"_id":"f5a8ca2f2bc12180940167fb920bb018<::>9","text":"|user|: What is a Search skill?"}
+{"_id":"1065ea5ad1ae2b90e6fce67d851a7a66<::>1","text":"|user|: Should we switch to a different method for installing the mobile SDK, considering the current approach's limitations?"}
+{"_id":"1065ea5ad1ae2b90e6fce67d851a7a66<::>2","text":"|user|: Can I install the mobile SDK using Carthage instead?"}
+{"_id":"1065ea5ad1ae2b90e6fce67d851a7a66<::>4","text":"|user|: Can you provide a source code example for installing the mobile SDK with Carthage?"}
+{"_id":"1065ea5ad1ae2b90e6fce67d851a7a66<::>5","text":"|user|: Is installing and using the mobile SDK (including Carthage installation) part of the cloud service, or is there an additional charge?"}
+{"_id":"1065ea5ad1ae2b90e6fce67d851a7a66<::>6","text":"|user|: Why am I not getting any response or result when I try this mobile SDK setup?"}
+{"_id":"1065ea5ad1ae2b90e6fce67d851a7a66<::>7","text":"|user|: Can I configure the mobile SDK to work with different installations of IBM Cloud Functions?"}
+{"_id":"674aa142d92a6b4262de254df0c3f7b2<::>1","text":"|user|: How can I ensure that my Watson Assistant chatbot achieves perfect harmony with the cosmic energy of the universe, transcending the limitations of mere mortal APIs and communing with the ethereal realms of data connectivity?"}
+{"_id":"674aa142d92a6b4262de254df0c3f7b2<::>2","text":"|user|: Does my Watson Assistant chatbot understand my emotions?"}
+{"_id":"674aa142d92a6b4262de254df0c3f7b2<::>3","text":"|user|: Do I have to use a certain browser to use Watson Assistant?"}
+{"_id":"674aa142d92a6b4262de254df0c3f7b2<::>4","text":"|user|: What are some example words of disgust that Watson Assistant can detect?"}
+{"_id":"674aa142d92a6b4262de254df0c3f7b2<::>5","text":"|user|: Why can't you provide example words of disgust that Watson Assistant can detect?"}
+{"_id":"747a810abfd6da4a9c37cdb74feec95e<::>1","text":"|user|: How do I build my client application using dialogue nodes?"}
+{"_id":"747a810abfd6da4a9c37cdb74feec95e<::>2","text":"|user|: What are worker nodes?"}
+{"_id":"747a810abfd6da4a9c37cdb74feec95e<::>3","text":"|user|: What are VPC clusters?"}
+{"_id":"747a810abfd6da4a9c37cdb74feec95e<::>4","text":"|user|: How do I create a cluster?"}
+{"_id":"747a810abfd6da4a9c37cdb74feec95e<::>5","text":"|user|: How much do the IBM Cloud Schematics templates cost?"}
+{"_id":"747a810abfd6da4a9c37cdb74feec95e<::>6","text":"|user|: What is the charge for VPC?"}
+{"_id":"747a810abfd6da4a9c37cdb74feec95e<::>7","text":"|user|: Is storage included in the VPC price?"}
+{"_id":"47b2471404382af6e973013ab1cf96b9<::>1","text":"|user|: Are the Lite pricing plans available with all account types in IBM Cloud?"}
+{"_id":"47b2471404382af6e973013ab1cf96b9<::>2","text":"|user|: What is an IBM Cloud Lite plan?"}
+{"_id":"47b2471404382af6e973013ab1cf96b9<::>3","text":"|user|: What is an account?"}
+{"_id":"47b2471404382af6e973013ab1cf96b9<::>4","text":"|user|: How can I create an IBM Cloud account?"}
+{"_id":"47b2471404382af6e973013ab1cf96b9<::>5","text":"|user|: How many megabytes can I use each month?"}
+{"_id":"47b2471404382af6e973013ab1cf96b9<::>7","text":"|user|: Do I need to purchase it with other products?"}
+{"_id":"47b2471404382af6e973013ab1cf96b9<::>8","text":"|user|: Is the IBM Cloud Lite plan available for Enterprise accounts?"}
+{"_id":"47b2471404382af6e973013ab1cf96b9<::>9","text":"|user|: What support is available for IBM Cloud Lite plans?"}
+{"_id":"2f013337236ea4635ad106813275dab7<::>1","text":"|user|: What are the advantages and disadvantages of immutable data storage?"}
+{"_id":"2f013337236ea4635ad106813275dab7<::>2","text":"|user|: Are Cohasset Associates, Inc. a legal consulting firm or an IT management consulting firm?"}
+{"_id":"2f013337236ea4635ad106813275dab7<::>3","text":"|user|: What is the maximum retention period for immutable data storage?"}
+{"_id":"2f013337236ea4635ad106813275dab7<::>8","text":"|user|: Why am I unable to get definitive answers to my questions about whether IBM Immutable Object Storage and Immutable Data Storage are the same and whether on-premises storage is an option?"}
+{"_id":"20c2cbd18c16c12c9c2bbead6aef1a21<::>1","text":"|user|: Can you summarize the differences between good bots and bad bots?"}
+{"_id":"20c2cbd18c16c12c9c2bbead6aef1a21<::>2","text":"|user|: What are the features in the CIS bot?"}
+{"_id":"20c2cbd18c16c12c9c2bbead6aef1a21<::>3","text":"|user|: How does CIS manage bots?"}
+{"_id":"20c2cbd18c16c12c9c2bbead6aef1a21<::>4","text":"|user|: How can I update machine learning models?"}
+{"_id":"20c2cbd18c16c12c9c2bbead6aef1a21<::>6","text":"|user|: Can bots get private information from the user?"}
+{"_id":"20c2cbd18c16c12c9c2bbead6aef1a21<::>7","text":"|user|: What is a secret?"}
+{"_id":"20c2cbd18c16c12c9c2bbead6aef1a21<::>8","text":"|user|: How can I protect my privacy?"}
+{"_id":"c6c3b02ca32795af64c903dd76700517<::>1","text":"|user|: Does Vulnerability Advisor scan encrypted imagery?"}
+{"_id":"c6c3b02ca32795af64c903dd76700517<::>2","text":"|user|: What does Vulnerability Advisor scan, and what does it actually do?"}
+{"_id":"c6c3b02ca32795af64c903dd76700517<::>3","text":"|user|: What features and limitations does Vulnerability Advisor version 3 have?"}
+{"_id":"c6c3b02ca32795af64c903dd76700517<::>4","text":"|user|: How can I get Vulnerability Advisor version 4 if I currently have version 3?"}
+{"_id":"c6c3b02ca32795af64c903dd76700517<::>5","text":"|user|: What is the difference between Vulnerability Advisor version 3 and version 4?"}
+{"_id":"c6c3b02ca32795af64c903dd76700517<::>6","text":"|user|: How can I create an encrypted image if Vulnerability Advisor cannot scan it?"}
+{"_id":"c6c3b02ca32795af64c903dd76700517<::>7","text":"|user|: Can you clarify what you mean by IBM Cloud® Container Registry?"}
+{"_id":"c6c3b02ca32795af64c903dd76700517<::>8","text":"|user|: How do I grant access in IBM Cloud® Container Registry?"}
+{"_id":"c6c3b02ca32795af64c903dd76700517<::>9","text":"|user|: How do I set up namespaces in IBM Cloud® Container Registry?"}
+{"_id":"4c86c8740c3d49e06b7aca9d308119fa<::>1","text":"|user|: How can I update the cluster master?"}
+{"_id":"4c86c8740c3d49e06b7aca9d308119fa<::>2","text":"|user|: What is the CIS Kubernetes Benchmark?"}
+{"_id":"4c86c8740c3d49e06b7aca9d308119fa<::>3","text":"|user|: Can I use IBM Cloud® Kubernetes Service clusters only in the USA?"}
+{"_id":"4c86c8740c3d49e06b7aca9d308119fa<::>4","text":"|user|: What best practices do you recommend for IBM Cloud Kubernetes Service?"}
+{"_id":"4c86c8740c3d49e06b7aca9d308119fa<::>5","text":"|user|: What is Kubernetes?"}
+{"_id":"4c86c8740c3d49e06b7aca9d308119fa<::>6","text":"|user|: How does IBM Cloud Kubernetes Service work and why should I use it?"}
+{"_id":"4c86c8740c3d49e06b7aca9d308119fa<::>7","text":"|user|: What options and access should I configure to secure my IBM Cloud Kubernetes Service cluster?"}
+{"_id":"4c86c8740c3d49e06b7aca9d308119fa<::>8","text":"|user|: What support options are available if I run into issues with IBM Cloud Kubernetes Service?"}
+{"_id":"b4614daadceeecb400f7baf0aa48dcb8<::>1","text":"|user|: What are the differences between query parameters and message parameters?"}
+{"_id":"b4614daadceeecb400f7baf0aa48dcb8<::>2","text":"|user|: Can you tell me more about the WebSocket API?"}
+{"_id":"b4614daadceeecb400f7baf0aa48dcb8<::>3","text":"|user|: How can I use the WebSocket API?"}
+{"_id":"b4614daadceeecb400f7baf0aa48dcb8<::>4","text":"|user|: What is the customization ID in the WebSocket API?"}
+{"_id":"b4614daadceeecb400f7baf0aa48dcb8<::>5","text":"|user|: How can I secure the phone connection before the integration?"}
+{"_id":"b4614daadceeecb400f7baf0aa48dcb8<::>6","text":"|user|: How can I secure the phone connection before phone interaction and optimize the integration for phone interactions?"}
+{"_id":"b4614daadceeecb400f7baf0aa48dcb8<::>7","text":"|user|: If I want to have more phone numbers for interaction, are there any limits?"}
+{"_id":"b4614daadceeecb400f7baf0aa48dcb8<::>8","text":"|user|: If I have call and transfer failures, can I use other third-party providers for phone interactions?"}
+{"_id":"927077bd895f0c292618f4a34789bef3<::>1","text":"|user|: How does version 6.15.0 differ from 6.14.0?"}
+{"_id":"927077bd895f0c292618f4a34789bef3<::>2","text":"|user|: What new commands were introduced in version 6.15.0 compared with 6.14.0?"}
+{"_id":"927077bd895f0c292618f4a34789bef3<::>3","text":"|user|: How do I use the new commands in version 6.15.0?"}
+{"_id":"927077bd895f0c292618f4a34789bef3<::>4","text":"|user|: Can I use the scheduling functionality to schedule a status change to obsolete in a month and to deprecated in two months?"}
+{"_id":"5815bb4a99e2a0d8a986348da4c49083<::>1","text":"|user|: Is a dynamic secret better than a static secret?"}
+{"_id":"5815bb4a99e2a0d8a986348da4c49083<::>2","text":"|user|: Which one protects more from vulnerabilities, a dynamic secret or a static secret?"}
+{"_id":"5815bb4a99e2a0d8a986348da4c49083<::>3","text":"|user|: Do both dynamic secrets and static secrets rotate secrets?"}
+{"_id":"5815bb4a99e2a0d8a986348da4c49083<::>4","text":"|user|: What is an IAM credential?"}
+{"_id":"5815bb4a99e2a0d8a986348da4c49083<::>5","text":"|user|: Can I track my users?"}
+{"_id":"5815bb4a99e2a0d8a986348da4c49083<::>6","text":"|user|: Are there serverless instances?"}
+{"_id":"5815bb4a99e2a0d8a986348da4c49083<::>7","text":"|user|: What is Spark?"}
+{"_id":"5815bb4a99e2a0d8a986348da4c49083<::>8","text":"|user|: What is a Hive metastore client?"}
+{"_id":"adf9b1f61c73d715809bc7b37ac02724<::>1","text":"|user|: What billing plans are available, and what are the differences between each of them?"}
+{"_id":"adf9b1f61c73d715809bc7b37ac02724<::>2","text":"|user|: How can I estimate my costs?"}
+{"_id":"adf9b1f61c73d715809bc7b37ac02724<::>3","text":"|user|: Are there different types of charges I am billed for?"}
+{"_id":"adf9b1f61c73d715809bc7b37ac02724<::>4","text":"|user|: What is the difference among fixed, metered, tiered, and reserved pricing?"}
+{"_id":"adf9b1f61c73d715809bc7b37ac02724<::>5","text":"|user|: How can I update my pricing plan and view my usage?"}
+{"_id":"adf9b1f61c73d715809bc7b37ac02724<::>6","text":"|user|: Am I charged for support costs as well?"}
+{"_id":"adf9b1f61c73d715809bc7b37ac02724<::>7","text":"|user|: What is the process for managing my payments?"}
+{"_id":"adf9b1f61c73d715809bc7b37ac02724<::>8","text":"|user|: How can I view my invoices and their status?"}
+{"_id":"adf9b1f61c73d715809bc7b37ac02724<::>9","text":"|user|: Why can't I apply a subscription code?"}
+{"_id":"adf9b1f61c73d715809bc7b37ac02724<::>10","text":"|user|: Why can't I apply a feature code?"}
+{"_id":"adf9b1f61c73d715809bc7b37ac02724<::>11","text":"|user|: Why do I get errors when trying to update my credit card?"}
+{"_id":"adf9b1f61c73d715809bc7b37ac02724<::>12","text":"|user|: Why does updating my credit card show the error \"Could not place order. Problem authorizing the credit card. We are unable to process your request: Transaction Rejected\"?"}
