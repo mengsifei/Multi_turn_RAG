@@ -1,0 +1,3 @@
+# Multi-Turn RAG
+
+Multi-turn retrieval-augmented generation (RAG) is challenging due to evolving user intent, conversational noise, and strict context limits. We propose a training-free hybrid retrieval pipeline for SemEval-2026 Task~8 that combines dense and sparse retrieval with controlled query rewriting and cross-encoder reranking. Our system achieves 0.5453 nDCG@5 on the evaluation split of Task~A, ranking 3rd out of 38 teams and outperforming the strongest baseline (0.4795). All retrieval components use publicly available open-source models. For Task~C, we reuse the Task~A retrieved documents in a lightweight generation pipeline based on the official prompt, achieving 0.5312 (harmonic mean of quality and faithfulness) and ranking 15th out of 29 teams.
