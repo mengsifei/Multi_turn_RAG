@@ -1,0 +1,20 @@
+{
+  "loaded_files": {
+    "clapnq": "human/retrieval_tasks/clapnq/clapnq.jsonl",
+    "govt": "human/retrieval_tasks/govt/govt.jsonl",
+    "cloud": "human/retrieval_tasks/cloud/cloud.jsonl",
+    "fiqa": "human/retrieval_tasks/fiqa/fiqa.jsonl"
+  },
+  "loaded_counts": {
+    "clapnq": 183408,
+    "govt": 49607,
+    "cloud": 72442,
+    "fiqa": 61022
+  },
+  "best_res_task_count": 842,
+  "best_res_context_document_id_refs": 4210,
+  "match_method_counts": {
+    "exact": 4210
+  },
+  "missing_count": 0
+}

@@ -22,9 +22,17 @@ import gzip
 
 def _norm_collection(x: str) -> str:
     s = (x or "").strip().lower()
-    if s == "ibmcloud":
+
+    if "clapnq" in s:
+        return "clapnq"
+    if "ibmcloud" in s or "cloud" in s:
         return "cloud"
-    return s
+    if "fiqa" in s:
+        return "fiqa"
+    if "govt" in s:
+        return "govt"
+
+    raise ValueError(f"Cannot infer domain from Collection={x!r}")
 
 
 
@@ -950,7 +958,8 @@ def main():
             if name not in test_queries_by_domain:
                 continue
             queries_override = test_queries_by_domain[name]
-            collection_out = name   # 输出用短名 fiqa/govt/...
+            collection_out = cfg["collection_name"]
+            # collection_out = name   # 输出用短名 fiqa/govt/...
         else:
             queries_override = None
             collection_out = None

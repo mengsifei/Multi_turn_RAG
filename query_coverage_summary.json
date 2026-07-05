@@ -1,0 +1,26 @@
+{
+  "loaded_files": {
+    "clapnq_rewrite": "cleaned_dataset/clapnq/clapnq_rewrite_gpt.jsonl",
+    "clapnq_lastturn": "cleaned_dataset/clapnq/clapnq_lastturn.jsonl",
+    "govt_rewrite": "cleaned_dataset/govt/govt_rewrite_gpt.jsonl",
+    "govt_lastturn": "cleaned_dataset/govt/govt_lastturn.jsonl",
+    "cloud_rewrite": "cleaned_dataset/cloud/cloud_rewrite_gpt.jsonl",
+    "cloud_lastturn": "cleaned_dataset/cloud/cloud_lastturn.jsonl",
+    "fiqa_rewrite": "cleaned_dataset/fiqa/fiqa_rewrite_gpt.jsonl",
+    "fiqa_lastturn": "cleaned_dataset/fiqa/fiqa_lastturn.jsonl"
+  },
+  "loaded_counts": {
+    "clapnq_rewrite": 208,
+    "clapnq_lastturn": 208,
+    "govt_rewrite": 201,
+    "govt_lastturn": 201,
+    "cloud_rewrite": 188,
+    "cloud_lastturn": 188,
+    "fiqa_rewrite": 180,
+    "fiqa_lastturn": 180
+  },
+  "missing_files": [],
+  "duplicate_ids": [],
+  "total_rewrite_queries": 777,
+  "total_lastturn_queries": 777
+}

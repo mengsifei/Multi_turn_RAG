@@ -69,6 +69,64 @@ def load_queries_map(query_path: Path) -> Dict[str, str]:
             q[str(qid)] = str(obj.get("text", ""))
     return q
 
+
+def norm_domain_from_collection(collection: str) -> str:
+    s = (collection or "").strip().lower()
+
+    if "clapnq" in s:
+        return "clapnq"
+    if "fiqa" in s:
+        return "fiqa"
+    if "govt" in s:
+        return "govt"
+    if "ibmcloud" in s or "cloud" in s:
+        return "cloud"
+
+    raise ValueError(f"Cannot infer domain from Collection={collection!r}")
+
+
+def load_test_queries_by_domain(test_input_jsonl: Path) -> Dict[str, Dict[str, str]]:
+    """
+    Input example:
+      {"task_id": "...<::>1",
+       "Collection": "mt-rag-clapnq-elser-512-100-20240503",
+       "text": "|user|: Where do the Arizona Cardinals play this week?"}
+
+    Return:
+      {
+        "clapnq": {task_id: text, ...},
+        "fiqa": {...},
+        ...
+      }
+    """
+    by_domain: Dict[str, Dict[str, str]] = defaultdict(dict)
+
+    with test_input_jsonl.open("r", encoding="utf-8") as f:
+        for line_no, line in enumerate(f, start=1):
+            line = line.strip()
+            if not line:
+                continue
+
+            obj = json.loads(line)
+
+            task_id = obj.get("task_id") or obj.get("_id") or obj.get("id")
+            if not task_id:
+                raise ValueError(f"{test_input_jsonl} line {line_no}: missing task_id/_id/id")
+
+            collection = obj.get("Collection") or obj.get("collection")
+            if not collection:
+                raise ValueError(f"{test_input_jsonl} line {line_no}: missing Collection/collection")
+
+            text = obj.get("text") or obj.get("query") or obj.get("question") or ""
+            if not text:
+                raise ValueError(f"{test_input_jsonl} line {line_no}: missing text/query/question")
+
+            dom = norm_domain_from_collection(collection)
+            by_domain[dom][str(task_id)] = str(text)
+
+    return by_domain
+
+
 def load_split_qids(split_root: Path, task: str, dom: str, split_kind: str) -> Optional[set]:
     cand1 = split_root / dom / f"{split_kind}.tsv"
     cand2 = split_root / task / dom / f"{split_kind}.tsv"
@@ -489,6 +547,11 @@ def main():
 
     ap.add_argument("--split_root", default=None)
     ap.add_argument("--split_kind", default="valid", choices=["train", "valid"])
+    ap.add_argument(
+        "--test_input_jsonl",
+        default=None,
+        help="Optional mixed-domain jsonl with task_id, Collection, text. If set, use it instead of per-domain query files.",
+    )
 
     args = ap.parse_args()
 
@@ -498,6 +561,12 @@ def main():
     cache_root = Path(args.cache_root)
 
     split_root = Path(args.split_root) if args.split_root else None
+    test_queries_by_domain = None
+    if args.test_input_jsonl:
+        test_queries_by_domain = load_test_queries_by_domain(Path(args.test_input_jsonl))
+        print("[TEST_INPUT] loaded mixed-domain queries:")
+        for dom, qs in test_queries_by_domain.items():
+            print(f"  {dom}: {len(qs)}")
 
     print(f"[LOAD] SparseEncoder(model={args.model_name}, device={args.device})")
     model = SparseEncoder(args.model_name, device=args.device, trust_remote_code=args.trust_remote_code)
@@ -517,11 +586,17 @@ def main():
     with out_path.open("w", encoding="utf-8") as fout:
         for dom in domains:
             corpus_path = root / dom / f"{dom}.jsonl"
-            query_path  = root / dom / f"{dom}_{args.task}.jsonl"
+            query_path = root / dom / f"{dom}_{args.task}.jsonl"
             if not corpus_path.exists():
                 raise FileNotFoundError(f"Missing corpus: {corpus_path}")
-            if not query_path.exists():
-                raise FileNotFoundError(f"Missing queries: {query_path}")
+
+            if test_queries_by_domain is None:
+                if not query_path.exists():
+                    raise FileNotFoundError(f"Missing queries: {query_path}")
+            else:
+                if dom not in test_queries_by_domain:
+                    print(f"[SKIP] {dom}: no queries in {args.test_input_jsonl}")
+                    continue
 
             allow_qids = None
             if split_root is not None:
@@ -529,9 +604,12 @@ def main():
                 if allow_qids is None:
                     raise FileNotFoundError(f"Split qids not found under {split_root} for dom={dom}, task={args.task}, kind={args.split_kind}")
 
-            queries = load_queries_map(query_path)
-            if allow_qids is not None:
-                queries = {qid: txt for qid, txt in queries.items() if qid in allow_qids}
+            if test_queries_by_domain is not None:
+                queries = test_queries_by_domain[dom]
+            else:
+                queries = load_queries_map(query_path)
+                if allow_qids is not None:
+                    queries = {qid: txt for qid, txt in queries.items() if qid in allow_qids}
 
             print(f"[{dom}] queries={len(queries)} corpus={corpus_path.name} task={args.task}")
             total_q += len(queries)

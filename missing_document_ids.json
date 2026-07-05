@@ -1,0 +1,79 @@
+[
+  {
+    "task_id": "20c2cbd18c16c12c9c2bbead6aef1a21<::>4",
+    "best_res_line_no": 84,
+    "context_index": 3,
+    "collection": "mt-rag-ibmcloud-elser-512-100-20240502",
+    "expected_domain": "cloud",
+    "document_id": "ibmcld_16524-3358-5215",
+    "match_method": "not_found",
+    "candidate_ids": [],
+    "num_candidates": 0
+  },
+  {
+    "task_id": "4175fcce99c56af0e02be5b8990fc16a<::>1",
+    "best_res_line_no": 174,
+    "context_index": 4,
+    "collection": "mt-rag-ibmcloud-elser-512-100-20240502",
+    "expected_domain": "cloud",
+    "document_id": "ibmcld_15922-37393-38495",
+    "match_method": "not_found",
+    "candidate_ids": [],
+    "num_candidates": 0
+  },
+  {
+    "task_id": "5815bb4a99e2a0d8a986348da4c49083<::>2",
+    "best_res_line_no": 253,
+    "context_index": 3,
+    "collection": "mt-rag-ibmcloud-elser-512-100-20240502",
+    "expected_domain": "cloud",
+    "document_id": "ibmcld_16727-1216520-1218568",
+    "match_method": "not_found",
+    "candidate_ids": [],
+    "num_candidates": 0
+  },
+  {
+    "task_id": "adf9b1f61c73d715809bc7b37ac02724<::>6",
+    "best_res_line_no": 499,
+    "context_index": 3,
+    "collection": "mt-rag-ibmcloud-elser-512-100-20240502",
+    "expected_domain": "cloud",
+    "document_id": "ibmcld_16727-1033295-1035221",
+    "match_method": "not_found",
+    "candidate_ids": [],
+    "num_candidates": 0
+  },
+  {
+    "task_id": "2f013337236ea4635ad106813275dab7<::>4",
+    "best_res_line_no": 791,
+    "context_index": 1,
+    "collection": "mt-rag-ibmcloud-elser-512-100-20240502",
+    "expected_domain": "cloud",
+    "document_id": "ibmcld_05032-1541-3629",
+    "match_method": "not_found",
+    "candidate_ids": [],
+    "num_candidates": 0
+  },
+  {
+    "task_id": "8040ccdfc0a0ffb8e3f82d94f92ddb5c<::>1",
+    "best_res_line_no": 815,
+    "context_index": 3,
+    "collection": "mt-rag-fiqa-beir-elser-512-100-20240501",
+    "expected_domain": "fiqa",
+    "document_id": "142154-0-649",
+    "match_method": "not_found",
+    "candidate_ids": [],
+    "num_candidates": 0
+  },
+  {
+    "task_id": "8040ccdfc0a0ffb8e3f82d94f92ddb5c<::>1",
+    "best_res_line_no": 815,
+    "context_index": 4,
+    "collection": "mt-rag-fiqa-beir-elser-512-100-20240501",
+    "expected_domain": "fiqa",
+    "document_id": "521283-0-664",
+    "match_method": "not_found",
+    "candidate_ids": [],
+    "num_candidates": 0
+  }
+]
